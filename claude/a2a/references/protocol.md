@@ -9,6 +9,7 @@ Agent-to-Agent (A2A) is an **open standard protocol** designed to enable seamles
 ### What is A2A?
 
 A2A enables agents to:
+
 - **Discover** other agents and their capabilities
 - **Communicate** using standardized protocols
 - **Collaborate** to complete complex tasks
@@ -140,6 +141,7 @@ GET /.well-known/agent.json
 ```
 
 This endpoint returns the agent's AgentCard, allowing other agents to:
+
 - Discover available capabilities
 - Understand how to interact with the agent
 - Route appropriate requests
@@ -210,6 +212,7 @@ uvicorn.run(a2a_app, host="0.0.0.0", port=8001)
 ```
 
 **Features:**
+
 - Auto-generates agent cards
 - Minimal configuration required
 - Quick setup for simple agents
@@ -227,6 +230,7 @@ More flexible configuration for complex deployments:
 ```
 
 **Features:**
+
 - Manual agent card creation
 - Support for multiple agents per server
 - More control over configuration
@@ -478,6 +482,7 @@ asyncio.run(test_agent())
 A2A provides a robust, standardized framework for building interconnected, intelligent agent systems. By following the protocol specifications and best practices outlined in this guide, developers can create scalable, maintainable multi-agent architectures with minimal integration complexity.
 
 Key takeaways:
+
 - Use AgentCards for discovery and capability advertisement
 - Implement hierarchical agent structures for complex systems
 - Follow phased deployment patterns (leaf → functional → orchestrator)

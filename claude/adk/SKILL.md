@@ -1,6 +1,6 @@
 ---
 name: adk
-description: Build AI agents using Google's Agent Development Kit (ADK). Use when creating LLM agents with tools, building workflow agents (Sequential, Parallel, Loop), composing multi-agent systems, or developing custom agents. Covers agent creation patterns, function tools, agent configuration, session management, and running agents locally with CLI or web interface.
+description: Build AI agents using Google's Agent Development Kit (ADK). Use when creating LLM agents with tools, building workflow agents (Sequential, Parallel, Loop), composing multi-agent systems, or developing custom agents. Covers agent creation patterns, function tools, agent configuration, session management, and running agents locally. Do NOT use for evaluation (use adk-eval-guide), observability (use adk-observability-guide), scaffolding (use adk-scaffold), or deployment (use agent-engine).
 ---
 
 # Agent Development Kit (ADK)
@@ -487,40 +487,7 @@ To generate memories after a session, call `memory_service.add_session_to_memory
 
 ## ADK Evaluations
 
-Run evals against deployed agents using the `genai.Client().evals` API:
-
-```python
-from google import genai
-from google.genai import types
-
-client = genai.Client(vertexai=True, project=PROJECT_ID, location=LOCATION)
-
-eval_cases = [
-    types.EvalCase(
-        eval_case_id="test_1",
-        conversation_scenario=types.ConversationScenario(
-            starting_prompt="Run a simulation of 3 shoppers",
-            conversation_plan="Ask about endcap conversion rates",
-        ),
-    ),
-]
-
-eval_set = types.EvalSet(eval_set_id="my_eval", eval_cases=eval_cases)
-
-# Step 1: Run inference
-result = client.evals.run_inference(agent=agent_resource, eval_set=eval_set,
-    config=types.RunInferenceConfig(eval_run_id="run_1"))
-
-# Step 2: Evaluate
-evaluation = client.evals.evaluate(
-    eval_set=result,
-    metrics=[
-        types.EvalMetric(metric_name="rubric_based_final_response_quality_v1"),
-        types.EvalMetric(metric_name="tool_use_quality_v1"),
-    ],
-    config=types.EvaluateConfig(eval_run_id="run_1"),
-)
-```
+For evaluation methodology, metrics, evalset schema, and running `adk eval`, use `/adk-eval-guide`.
 
 ## Troubleshooting
 

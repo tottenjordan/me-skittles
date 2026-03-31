@@ -1,0 +1,15 @@
+# Node
+node_modules/
+
+# Python
+__pycache__/
+*.pyc
+
+# Playwright temp files
+.temp-execution-*.js
+
+# Environment
+.env
+
+# OS
+.DS_Store
