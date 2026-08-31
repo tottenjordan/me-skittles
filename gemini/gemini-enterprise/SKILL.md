@@ -316,6 +316,13 @@ Route queries to a specific agent:
 
 **Retry strategy (recommended):** Exponential backoff, 10 attempts max, multiplier=2, min=4s, max=120s. See [scripts/stream_assist_client.py](scripts/stream_assist_client.py) for tenacity-based implementation.
 
+That script declares its own dependencies inline (PEP 723), so it runs without a
+virtualenv:
+
+```bash
+uv run scripts/stream_assist_client.py
+```
+
 ## Authentication
 
 All API calls require:

@@ -1,3 +1,13 @@
+#!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.10"
+# dependencies = [
+#     "google-auth>=2.0",
+#     "requests>=2.31",
+#     "tenacity>=8.0",
+#     "urllib3>=2.0",
+# ]
+# ///
 """Portable StreamAssist client for the Discovery Engine REST API.
 
 A standalone client for querying Gemini Enterprise via the streamAssist

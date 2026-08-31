@@ -90,6 +90,13 @@ Gemini image generation cannot accurately reproduce trademarked GCP product logo
 
 Category icons sourced from [services.google.com/fh/files/misc/category-icons.zip](https://services.google.com/fh/files/misc/category-icons.zip). SVGs also available in `assets/icons/categories/svg/`.
 
+The script declares its own dependencies inline (PEP 723), so it needs no virtualenv:
+
+```bash
+uv run scripts/overlay_icons.py diagram.png out.png --icons "BigQuery:100,200"
+uv run scripts/overlay_icons.py --list   # available icon names
+```
+
 #### Step-by-step
 
 1. Read the generated diagram to identify GCP product icon locations (x, y coordinates)
