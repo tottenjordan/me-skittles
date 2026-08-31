@@ -14,13 +14,15 @@ Checks the invariants that make a skill loadable and keep the two trees honest:
 - No committed build artifacts (__pycache__, *.pyc)
 - gemini/ contains no Claude-specific terminology (it is a port, not a copy)
 - Plugin bundles use the manifest directory matching their tree
+- SKILL.md stays under 500 lines (warns at 450) so progressive disclosure is preserved
 - No retired model IDs outside of text that discusses their retirement
 - No frontmatter keys the harness silently ignores (warning)
 - Relative markdown links resolve (warning; template placeholders are skipped)
 
-Deliberately NOT checked here: required sections, line-count limits, and
-Hugo-shortcode artifacts. Those are bundle-specific and owned by
-claude/testing-handbook-skills/scripts/validate-skills.py.
+Deliberately NOT checked here: required per-type sections and Hugo-shortcode
+artifacts. Those are bundle-specific and owned by
+claude/testing-handbook-skills/scripts/validate-skills.py, which enforces the
+same 500-line limit for the skills it covers.
 
 Usage:
     uv run scripts/validate-skills.py            # validate everything
@@ -44,6 +46,13 @@ TREES = ("claude", "gemini")
 MAX_NAME_LENGTH = 64
 MAX_DESCRIPTION_LENGTH = 1024
 MIN_DESCRIPTION_LENGTH = 20
+
+# Everything in SKILL.md loads up front, so detail that belongs in references/
+# costs context on every single use. 500 is the repo's own documented standard --
+# claude/writing-skills/anthropic-best-practices.md states it twice, including as
+# a checklist item -- and is what the testing-handbook bundle validator enforces.
+MAX_SKILL_LINES = 500
+WARN_SKILL_LINES = 450
 NAME_PATTERN = re.compile(r"^[a-z0-9-]{1,64}$")
 LINK_PATTERN = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
 ARTIFACT_GLOBS = ("**/__pycache__", "**/*.pyc")
@@ -220,6 +229,7 @@ def check_skill(skill_file: Path, repo: Path, report: Report) -> None:
                 rel, f"Description too long: {len(description)} chars (max {MAX_DESCRIPTION_LENGTH})"
             )
 
+    check_line_count(skill_file, repo, content, report)
     check_frontmatter_keys(skill_file, repo, frontmatter, report)
     check_links(content, skill_file, repo, report)
 
@@ -334,6 +344,25 @@ def check_deprecated_models(repo: Path, report: Report) -> None:
                             "(or mention the shutdown explicitly on this line)",
                         )
     return
+
+
+def check_line_count(skill_file: Path, repo: Path, content: str, report: Report) -> None:
+    """Enforce the documented 500-line SKILL.md ceiling.
+
+    Long skills defeat progressive disclosure: SKILL.md is loaded in full whenever
+    the skill triggers, so reference detail left inline is paid for on every use.
+    Move it into references/ and link it.
+    """
+    n = content.count("\n") + 1
+    rel = skill_file.relative_to(repo)
+    if n > MAX_SKILL_LINES:
+        report.error(
+            rel,
+            f"SKILL.md is {n} lines (limit {MAX_SKILL_LINES}) — move detail into references/ "
+            "and leave a link behind",
+        )
+    elif n > WARN_SKILL_LINES:
+        report.warn(rel, f"SKILL.md is {n} lines, approaching the {MAX_SKILL_LINES}-line limit")
 
 
 def check_frontmatter_keys(skill_file: Path, repo: Path, frontmatter: dict, report: Report) -> None:

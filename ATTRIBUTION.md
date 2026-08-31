@@ -35,6 +35,17 @@ frontmatter:
 Derived from the [Trail of Bits Application Security Testing Handbook](https://appsec.guide).
 Author attribution is recorded in each bundle's `plugin.json`.
 
+**Local modification — reorganised for progressive disclosure.** Ten skills in
+`testing-handbook-skills` exceeded the 500-line `SKILL.md` ceiling that the bundle's own validator
+enforces (`scripts/validate-skills.py`, `MAX_LINES = 500`), failing 10 of 16 checks as vendored.
+Detail was moved from each `SKILL.md` into sibling `references/*.md` files, leaving a linked stub:
+`libfuzzer`, `aflpp`, `libafl`, `harness-writing`, `coverage-analysis`, `semgrep`, `codeql`,
+`wycheproof`, `atheris`, `constant-time-testing`.
+
+**Content was relocated, not edited**, and the H2 sections each skill's `type` requires stayed in
+`SKILL.md`. A future re-sync from upstream should re-apply this split rather than overwrite it —
+otherwise the bundle validator starts failing again.
+
 ## Anthropic
 
 | Path | Description |

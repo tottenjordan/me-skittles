@@ -209,93 +209,9 @@ async for event in remote_agent.async_stream_query(
 
 ## Multi-Agent Deployment (A2A)
 
-Deploy agents in phases: leaf → functional → orchestrator.
-
-### Phase 1: Deploy Leaf Agents
-
-```python
-from google.adk.agents import Agent
-from vertexai.agent_engines import AdkApp
-from google.adk.sessions import InMemorySessionService
-import a2a
-import os
-
-def get_pto_balance(user_id: str) -> dict:
-    """Gets PTO balance for a user."""
-    return {"user_id": user_id, "balance": 15}
-
-pto_agent = Agent(
-    name="pto_agent",
-    model="gemini-3.7-flash",
-    instruction="You check PTO balances. Use get_pto_balance when asked.",
-    tools=[get_pto_balance]
-)
-
-# Bundle a2a package
-a2a_path = os.path.dirname(a2a.__file__)
-
-pto_remote = client.agent_engines.create(
-    agent=AdkApp(
-        agent=pto_agent,
-        session_service_builder=lambda **kwargs: InMemorySessionService()
-    ),
-    config={
-        "display_name": "pto-agent",
-        "requirements": [
-            "google-cloud-aiplatform[agent_engines,a2a]",
-            "google-adk[a2a]",
-            "a2a-sdk>=1.1"
-        ],
-        "extra_packages": ["./agent_system", a2a_path],
-        "staging_bucket": "gs://your-bucket"
-    }
-)
-
-pto_url = f"https://us-central1-aiplatform.googleapis.com/v1/{pto_remote.resource_name}"
-```
-
-### Phase 2: Deploy Functional Agents
-
-```python
-from google.adk.agents.remote_a2a_agent import RemoteA2aAgent
-
-# Functional agent connects to leaf via A2A
-# Pass leaf URL as environment variable
-hr_remote = client.agent_engines.create(
-    agent=AdkApp(
-        agent=hr_agent,
-        session_service_builder=lambda **kwargs: InMemorySessionService()
-    ),
-    config={
-        "display_name": "hr-agent",
-        "requirements": [...],
-        "env_vars": {"PTO_AGENT_URL": pto_url},
-        "extra_packages": ["./agent_system", a2a_path],
-        "staging_bucket": "gs://your-bucket"
-    }
-)
-```
-
-### Phase 3: Deploy Orchestrator
-
-```python
-orch_remote = client.agent_engines.create(
-    agent=AdkApp(
-        agent=orchestrator_agent,
-        session_service_builder=lambda **kwargs: InMemorySessionService()
-    ),
-    config={
-        "display_name": "orchestrator",
-        "requirements": [...],
-        "env_vars": {
-            "HR_AGENT_URL": hr_url,
-            "FINANCE_AGENT_URL": finance_url
-        },
-        "extra_packages": ["./agent_system", a2a_path],
-        "staging_bucket": "gs://your-bucket"
-    }
-)
-```
+Deploying a multi-agent system that speaks A2A, including the agent card, executor
+wiring, and remote-agent connections:
+**[references/a2a-deployment.md](references/a2a-deployment.md)**
 
 ## Managing Agents
 
@@ -373,66 +289,6 @@ export BUCKET="gs://your-staging-bucket"
 | CrewAI | Custom Template |
 | Custom | Custom Template |
 
-## Complete Deployment Example
-
-```python
-import os
-from google.cloud import aiplatform
-from vertexai.agent_engines import AdkApp
-from google.adk.agents import Agent
-from google.adk.sessions import InMemorySessionService
-import vertexai.agent_engines as vae
-
-# Configuration
-PROJECT_ID = os.environ.get("GOOGLE_CLOUD_PROJECT")
-LOCATION = os.environ.get("GOOGLE_CLOUD_LOCATION", "us-central1")
-BUCKET = os.environ.get("BUCKET")
-
-def deploy_agent(agent, name, env_vars=None, extra_packages=None):
-    """Deploy an ADK agent to Agent Engine."""
-
-    aiplatform.init(
-        project=PROJECT_ID,
-        location=LOCATION,
-        staging_bucket=BUCKET
-    )
-
-    requirements = [
-        "google-cloud-aiplatform[agent_engines,a2a]",
-        "google-adk[a2a]",
-        "uvicorn",
-        "fastapi",
-        "a2a-sdk>=1.1"
-    ]
-
-    app = AdkApp(
-        agent=agent,
-        session_service_builder=lambda **kwargs: InMemorySessionService()
-    )
-
-    remote = vae.create(
-        agent_engine=app,
-        display_name=name,
-        requirements=requirements,
-        env_vars=env_vars,
-        extra_packages=extra_packages
-    )
-
-    print(f"Deployed {name}: {remote.resource_name}")
-    return remote
-
-# Usage
-if __name__ == "__main__":
-    from my_agent import root_agent
-
-    remote = deploy_agent(
-        root_agent,
-        "my-production-agent",
-        env_vars={"API_KEY": "..."},
-        extra_packages=["./my_agent"]
-    )
-```
-
 ## Dependencies
 
 ```
@@ -443,43 +299,11 @@ fastapi
 a2a-sdk>=1.1
 ```
 
-## Self-Contained Deployment Pattern (cloudpickle)
+## Complete example & self-contained deployment
 
-When deploying via `agent_engines.create()` with an agent object, ADK uses cloudpickle. **Any module referenced by the agent must be importable in the Agent Engine runtime.** If the agent imports from local modules (config files, tools), the pickle will fail with module-not-found errors.
-
-**Solution**: Build the agent inline in the deploy script with zero external module dependencies:
-
-```python
-def _build_agent():
-    """Build agent inline for Agent Engine — no external imports."""
-    from google.adk.agents import LlmAgent
-
-    # Inline ALL data (no filesystem reads at runtime)
-    _PERSONAS = [
-        {"id": "budget", "name": "Budget Shopper", "budget": 120.00},
-        # ...
-    ]
-
-    agents = []
-    for p in _PERSONAS:
-        agents.append(LlmAgent(
-            name=f"shopper_{p['id']}",
-            model="gemini-2.5-flash",
-            instruction=f"You are {p['name']}. Budget: ${p['budget']:.2f}.",
-        ))
-
-    return LlmAgent(
-        name="orchestrator",
-        model="gemini-2.5-flash",
-        instruction="...",
-        sub_agents=agents,
-    )
-
-# Deploy
-app = agent_engines.AdkApp(agent=_build_agent(), enable_tracing=True)
-remote = agent_engines.create(agent_engine=app, display_name="My Agent",
-    requirements=["google-adk>=2.8", "google-cloud-aiplatform"])
-```
+An end-to-end deployment script, and the cloudpickle pattern for bundling an agent
+without a source checkout:
+**[references/advanced_deployment.md](references/advanced_deployment.md)**
 
 ## CLI Deployment (adk deploy)
 

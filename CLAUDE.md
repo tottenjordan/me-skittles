@@ -68,6 +68,8 @@ The `description` field controls when the skill is auto-triggered. Write it as t
 - No dangling symlinks or committed build artifacts
 - No Claude terminology under `gemini/` — that tree is a port, not a copy
 - Plugin bundles using the manifest directory for their tree
+- `SKILL.md` under 500 lines (warns at 450) — the standard documented in
+  `writing-skills/anthropic-best-practices.md`; move detail into `references/` and link it
 - No retired model IDs (see `DEPRECATED_MODELS`) outside deprecation notes
 - No frontmatter keys the harness ignores, e.g. `when_to_use` — triggers must live in `description`
 
@@ -82,4 +84,4 @@ pulling from an upstream Gemini skills repo.
 - Test skills with `/testing-skills-with-subagents` before deployment
 - The `playwright-skill` directory contains a Node.js package (`package.json`, `run.js`) — run `npm install` there if working on browser automation
 - Repo-wide validation: `uv run scripts/validate-skills.py` (see Validation above) — run before committing
-- Bundle-specific validation for testing-handbook skills: `uv run scripts/validate-skills.py` from `claude/testing-handbook-skills/` (checks required sections and line limits; 10 skills currently exceed its 500-line limit)
+- Bundle-specific validation for testing-handbook skills: `uv run scripts/validate-skills.py` from `claude/testing-handbook-skills/` (required per-type sections, Hugo shortcodes); runs in CI for both trees
