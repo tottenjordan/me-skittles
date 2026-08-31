@@ -6,20 +6,37 @@ A collection of skills (slash commands) for [Claude Code](https://claude.ai/code
 
 ### Claude Code
 
-Add this repo's `claude/` directory to your Claude Code skills path:
+Claude Code discovers skills by directory, not by a config path setting. Each skill must live at
+`~/.claude/skills/<skill-name>/SKILL.md` (available everywhere) or
+`<project>/.claude/skills/<skill-name>/SKILL.md` (that project only).
 
-```json
-// ~/.claude/settings.json
-{
-  "skills": ["path/to/me-skittles/claude"]
-}
+Symlink the skills you want:
+
+```bash
+REPO="$(pwd)"          # run from the repo root
+mkdir -p ~/.claude/skills
+
+# One skill
+ln -s "$REPO/claude/writing-skills" ~/.claude/skills/writing-skills
+
+# All of them
+for d in "$REPO"/claude/*/; do
+  ln -s "$d" ~/.claude/skills/"$(basename "$d")"
+done
 ```
 
-Skills are then available as slash commands (e.g., `/adk`, `/writing-skills`).
+Skills auto-trigger from their `description`, and user-invocable ones are also available as slash
+commands (e.g. `/writing-skills`). Run `/doctor` to confirm they loaded.
+
+Note that `property-based-testing` and `testing-handbook-skills` are plugin bundles, not single
+skills — their sub-skills live under `skills/`. Install those via the plugin marketplace mechanism
+rather than symlinking the bundle directory.
 
 ### Gemini CLI
 
-Add the `gemini/` directory to your Gemini CLI configuration.
+Install the equivalents from `gemini/` into your Gemini CLI configuration directory. Consult the
+[Gemini CLI docs](https://github.com/google-gemini/gemini-cli) for the current path and layout, as
+its extension mechanism differs from Claude Code's.
 
 ## Skills
 
@@ -27,10 +44,6 @@ Add the `gemini/` directory to your Gemini CLI configuration.
 | Skill | Description |
 |-------|-------------|
 | `adk` | Build AI agents with Google's Agent Development Kit |
-| `adk-dev-guide` | ADK development lifecycle and coding guidelines |
-| `adk-eval-guide` | ADK evaluation methodology and metrics |
-| `adk-observability-guide` | Cloud Trace, logging, and agent analytics |
-| `adk-scaffold` | Scaffold new ADK agent projects |
 | `a2a` | Multi-agent systems using A2A protocol |
 | `agent-engine` | Deploy agents on Vertex AI Agent Engine |
 | `agent-development` | Claude Code agent/subagent authoring |
@@ -81,9 +94,9 @@ Add the `gemini/` directory to your Gemini CLI configuration.
 ### Gemini-only Skills
 | Skill | Description |
 |-------|-------------|
-| `gemini_md_author` | Gemini CLI configuration authoring |
-| `git_commit_formatter` | Git commit message formatting |
-| `license_header_adder` | Add license headers to source files |
+| `gemini-md-author` | Gemini CLI configuration authoring |
+| `git-commit-formatter` | Git commit message formatting |
+| `license-header-adder` | Add license headers to source files |
 
 ## Skill Structure
 

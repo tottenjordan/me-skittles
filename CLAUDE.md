@@ -11,9 +11,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Directory Layout
 
 - `claude/` — Skills for Claude Code (SKILL.md-based, loaded via Claude Code's skill system)
-- `gemini/` — Parallel skills for Gemini CLI (mostly mirrored from `claude/`, with some Gemini-specific additions like `gemini_md_author`, `git_commit_formatter`, `license_header_adder`)
+- `gemini/` — Parallel skills for Gemini CLI (mostly mirrored from `claude/`, with some Gemini-specific additions like `gemini-md-author`, `git-commit-formatter`, `license-header-adder`)
 
-Most skills exist in both directories. Claude-only skills include: `adk-dev-guide`, `adk-eval-guide`, `adk-observability-guide`, `adk-scaffold`, `frontend-design`, `insights-report`, `inspect-vai-pipes`, `paperbanana`.
+Most skills exist in both directories. Claude-only skills include: `frontend-design`, `insights-report`, `inspect-vai-pipes`, `paperbanana`.
 
 ### Skill Structure
 
@@ -39,7 +39,7 @@ The `description` field controls when the skill is auto-triggered. Write it as t
 
 | Category | Skills |
 |----------|--------|
-| ADK/Agents | `adk`, `adk-dev-guide`, `adk-eval-guide`, `adk-observability-guide`, `adk-scaffold`, `a2a`, `agent-engine`, `agent-development` |
+| ADK/Agents | `adk`, `a2a`, `agent-engine`, `agent-development` |
 | Development workflow | `writing-skills`, `writing-plans`, `executing-plans`, `subagent-driven-development`, `ralph-wiggum` |
 | Testing | `testing-anti-patterns`, `testing-skills-with-subagents`, `condition-based-waiting`, `property-based-testing`, `testing-handbook-skills` |
 | Tools/Automation | `browser-use`, `playwright-skill`, `git-worktrees`, `using-git-worktrees`, `inspect-vai-pipes` |
