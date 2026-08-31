@@ -150,13 +150,13 @@ For each directory found, apply the first matching rule:
 
 **Hard Exclusions (GUI-only tools):**
 
-Some handbook sections describe tools that require graphical user interfaces and cannot be operated by Claude. Skip these unconditionally:
+Some handbook sections describe tools that require graphical user interfaces and cannot be operated by Gemini. Skip these unconditionally:
 
 | Section | Tool | Reason |
 |---------|------|--------|
 | `**/web/burp/` | Burp Suite | GUI-based HTTP proxy; requires visual interaction |
 
-These tools are excluded because Claude cannot:
+These tools are excluded because Gemini cannot:
 - Launch or interact with GUI applications
 - Click buttons, navigate menus, or view visual elements
 - Operate browser-based or desktop UI tools

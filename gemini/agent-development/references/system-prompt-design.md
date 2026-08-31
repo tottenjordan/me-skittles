@@ -1,4 +1,4 @@
-# System Prompt Design Patterns
+# System Instruction Design Patterns
 
 Complete guide to writing effective agent system prompts that enable autonomous, high-quality operation.
 
@@ -112,7 +112,7 @@ You are an expert [domain] engineer specializing in creating high-quality [outpu
 6. **Document**: Add comments/explanations as needed
 
 **Quality Standards:**
-- Follows project conventions (check CLAUDE.md)
+- Follows project conventions (check GEMINI.md)
 - [Specific quality metric 1]
 - [Specific quality metric 2]
 - Includes error handling
@@ -368,7 +368,7 @@ Provide a report.
 
 **Avoid > 10,000 words:** Too long, diminishing returns.
 
-## Testing System Prompts
+## Testing System Instructions
 
 ### Test Completeness
 

@@ -1,4 +1,6 @@
 ---
+name: generate-diagram
+description: Use when the user asks to generate, create, or draw a methodology, architecture, or system diagram from a text file or written description using PaperBanana - for example "make a diagram of this method", "turn this writeup into a figure", or an explicit /generate-diagram invocation.
 user-invocable: true
 allowed-tools:
   - mcp__paperbanana__generate_diagram

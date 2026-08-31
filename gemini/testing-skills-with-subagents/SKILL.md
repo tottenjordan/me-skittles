@@ -1,5 +1,5 @@
 ---
-name: Testing Skills With Subagents
+name: testing-skills-with-subagents
 description: RED-GREEN-REFACTOR for process documentation - baseline without skill, write addressing failures, iterate closing loopholes
 when_to_use: when creating or editing skills, before deployment, to verify they work under pressure and resist rationalization
 version: 1.1.0
@@ -17,7 +17,7 @@ You run scenarios without the skill (RED - watch agent fail), write skill addres
 
 See skills/testing/test-driven-development for the fundamental cycle. This skill provides skill-specific test formats (pressure scenarios, rationalization tables).
 
-**Complete worked example:** See examples/CLAUDE_MD_TESTING.md for a full test campaign testing CLAUDE.md documentation variants.
+**Complete worked example:** See examples/GEMINI_MD_TESTING.md for a full test campaign testing GEMINI.md documentation variants.
 
 ## When to Use
 

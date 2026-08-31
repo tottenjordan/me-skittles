@@ -1,6 +1,6 @@
 ---
 name: adk
-description: Build AI agents using Google's Agent Development Kit (ADK). Use when creating LLM agents with tools, building workflow agents (Sequential, Parallel, Loop), composing multi-agent systems, or developing custom agents. Covers agent creation patterns, function tools, agent configuration, session management, and running agents locally. Do NOT use for evaluation (use adk-eval-guide), observability (use adk-observability-guide), scaffolding (use adk-scaffold), or deployment (use agent-engine).
+description: Build AI agents using Google's Agent Development Kit (ADK). Use when creating LLM agents with tools, building workflow agents (Sequential, Parallel, Loop), composing multi-agent systems, or developing custom agents. Covers agent creation patterns, function tools, agent configuration, session management, and running agents locally. Do NOT use for deployment (use agent-engine).
 ---
 
 # Agent Development Kit (ADK)
@@ -487,7 +487,8 @@ To generate memories after a session, call `memory_service.add_session_to_memory
 
 ## ADK Evaluations
 
-For evaluation methodology, metrics, evalset schema, and running `adk eval`, use `/adk-eval-guide`.
+For evaluation methodology, metrics, evalset schema, and running `adk eval`, see the
+[ADK evaluation docs](https://google.github.io/adk-docs/evaluate/).
 
 ## Troubleshooting
 

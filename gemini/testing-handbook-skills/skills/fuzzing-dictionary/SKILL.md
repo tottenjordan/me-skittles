@@ -72,7 +72,7 @@ kw3="\xF7\xF8"
 
 Choose a generation method based on what's available:
 
-**From LLM:** Prompt ChatGPT or Claude with:
+**From LLM:** Prompt ChatGPT or Gemini with:
 ```text
 A dictionary can be used to guide the fuzzer. Write me a dictionary file for fuzzing a <PNG parser>. Each line should be a quoted string or key-value pair like kw="value". Include magic bytes, chunk types, and common header values. Use hex escapes like "\xF7\xF8" for binary values.
 ```

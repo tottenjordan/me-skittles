@@ -23,7 +23,7 @@ Then select the `property-based-testing` plugin to install.
 
 ## What's Included
 
-This plugin provides a skill that helps Claude Code proactively suggest and write property-based tests when it detects suitable patterns in your code:
+This plugin provides a skill that helps Gemini CLI proactively suggest and write property-based tests when it detects suitable patterns in your code:
 
 - **Serialization pairs**: encode/decode, serialize/deserialize, toJSON/fromJSON
 - **Parsers**: URL parsing, config parsing, protocol parsing

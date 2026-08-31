@@ -2,13 +2,13 @@
 name: testing-handbook-generator
 description: >
   Meta-skill that analyzes the Trail of Bits Testing Handbook (appsec.guide)
-  and generates Claude Code skills for security testing tools and techniques.
+  and generates Gemini CLI skills for security testing tools and techniques.
   Use when creating new skills based on handbook content.
 ---
 
 # Testing Handbook Skill Generator
 
-Generate and maintain Claude Code skills from the Trail of Bits Testing Handbook.
+Generate and maintain Gemini CLI skills from the Trail of Bits Testing Handbook.
 
 ## When to Use
 
@@ -97,7 +97,7 @@ Do not scan or pull into context any skills outside of `testing-handbook-skills/
 | `draft: true` in frontmatter | Skip section |
 | Empty directory | Skip section |
 | Template/placeholder file | Skip section |
-| GUI-only tool (e.g., `web/burp/`) | Skip section (Claude cannot operate GUI tools) |
+| GUI-only tool (e.g., `web/burp/`) | Skip section (Gemini cannot operate GUI tools) |
 
 ## Decision Tree
 

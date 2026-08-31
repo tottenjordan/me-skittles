@@ -1,6 +1,6 @@
 # Testing Handbook Skills
 
-Meta-skill that generates Claude Code skills from the [Trail of Bits Application Security Testing Handbook](https://appsec.guide).
+Meta-skill that generates Gemini CLI skills from the [Trail of Bits Application Security Testing Handbook](https://appsec.guide).
 
 ## Overview
 
@@ -13,13 +13,13 @@ This plugin provides a skill generator that:
 
 ## Installation
 
-Add to your Claude Code skills configuration:
+Add to your Gemini CLI skills configuration:
 
 ```bash
 # From the skills marketplace
-claude skills install testing-handbook-skills
+gemini skills install testing-handbook-skills
 
-# Or manually add to .claude/settings.json
+# Or manually add to .gemini/settings.json
 {
   "plugins": [
     "./plugins/testing-handbook-skills"
@@ -51,7 +51,7 @@ Create a skill for the libFuzzer section of the testing handbook
 
 ```
 plugins/testing-handbook-skills/
-├── .claude-plugin/
+├── .gemini-plugin/
 │   └── plugin.json
 ├── scripts/
 │   └── validate-skills.py        # Skill validation tool

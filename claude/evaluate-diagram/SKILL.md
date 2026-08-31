@@ -1,4 +1,6 @@
 ---
+name: evaluate-diagram
+description: Use when the user asks to evaluate, score, grade, or compare a generated diagram against a human reference image using PaperBanana's VLM-as-Judge - scoring faithfulness, conciseness, readability, and aesthetics.
 user-invocable: true
 allowed-tools:
   - mcp__paperbanana__evaluate_diagram

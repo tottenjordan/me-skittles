@@ -126,7 +126,7 @@ DESC=$(yq '.description' "$SKILL")
 
 **Validation rules:**
 - No XML/HTML tags in name or description (pattern: `<[^>]+>`)
-- No reserved words ("anthropic", "claude") in name
+- No reserved words ("gemini", "gemini") in name
 - `type` field ensures correct section validation (if missing, type is inferred from content)
 - Description should include both "what" (tool purpose) and "when" (trigger conditions)
 - No Hugo shortcodes in frontmatter (pattern: `\{\{[<%]`)
@@ -252,16 +252,16 @@ grep -E '\{\{[<%]' ../libfuzzer/SKILL.md  # Replace 'libfuzzer' with target skil
 
 ## Activation Testing
 
-Verify Claude activates the skill correctly.
+Verify Gemini activates the skill correctly.
 
 ### Test 1: Direct Invocation
 
 **Prompt:** "Use the [skill-name] skill"
 
 **Expected:**
-- Claude loads SKILL.md
-- Claude references skill content
-- Claude follows skill workflow
+- Gemini loads SKILL.md
+- Gemini references skill content
+- Gemini follows skill workflow
 
 ### Test 2: Implicit Trigger
 
@@ -280,12 +280,12 @@ Verify Claude activates the skill correctly.
 
 **Expected:**
 - Skill description matches prompt intent
-- Claude selects this skill over alternatives
-- Claude uses skill content appropriately
+- Gemini selects this skill over alternatives
+- Gemini uses skill content appropriately
 
 ### Test 3: Decision Tree Navigation
 
-**Test:** Claude navigates to supporting files correctly
+**Test:** Gemini navigates to supporting files correctly
 
 **Prompts:**
 1. General query → Should use SKILL.md overview
