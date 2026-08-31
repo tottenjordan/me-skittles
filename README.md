@@ -54,12 +54,17 @@ its extension mechanism differs from Claude Code's.
 | `writing-skills` | TDD-based methodology for creating new skills |
 | `writing-plans` | Design implementation plans before coding |
 | `executing-plans` | Execute plans with review checkpoints |
-| `subagent-driven-development` | Parallel task execution with subagents |
+| `subagent-driven-development` | Fresh subagent per task with two-stage review |
+| `requesting-code-review` | Dispatch a reviewer subagent before merging |
+| `receiving-code-review` | Respond to review feedback with rigor, not agreement |
+| `finishing-a-development-branch` | Merge, PR, or clean up completed work |
 | `ralph-wiggum` | Iterative trial-and-error development loop |
+| `modern-python` | Modern Python project setup (uv, ruff, pyproject) — Claude only |
 
 ### Testing
 | Skill | Description |
 |-------|-------------|
+| `test-driven-development` | Write the failing test first |
 | `testing-anti-patterns` | Avoid common testing mistakes (mock abuse, test-only methods) |
 | `testing-skills-with-subagents` | Red-green-refactor for validating skills |
 | `condition-based-waiting` | Replace arbitrary timeouts with condition polling |
@@ -71,17 +76,14 @@ its extension mechanism differs from Claude Code's.
 |-------|-------------|
 | `browser-use` | AI-powered browser automation |
 | `playwright-skill` | Browser automation with Playwright |
-| `git-worktrees` | Git worktree lifecycle management |
-| `using-git-worktrees` | Create isolated worktrees for feature work |
+| `git-worktrees` | Full worktree lifecycle: create, verify, merge, tear down |
 | `inspect-vai-pipes` | Debug and inspect Vertex AI Pipeline jobs |
 
 ### Diagrams & Frontend
 | Skill | Description |
 |-------|-------------|
-| `generate-diagram` | Generate diagrams from descriptions |
-| `evaluate-diagram` | Evaluate generated diagrams |
-| `gcp-diagram` | GCP-branded architecture diagrams |
-| `paperbanana` | Academic diagrams and statistical plots |
+| `paperbanana` | Diagrams, plots, batch figures, and evaluation via the PaperBanana MCP pipeline |
+| `gcp-diagram` | GCP-branded architecture diagrams via Vertex AI + official icon overlay |
 | `frontend-design` | Production-grade frontend interfaces |
 
 ### Other
@@ -98,6 +100,21 @@ its extension mechanism differs from Claude Code's.
 | `gemini-md-improver` | Audit and improve GEMINI.md files |
 | `git-commit-formatter` | Git commit message formatting |
 | `license-header-adder` | Add license headers to source files |
+
+### Google Cloud & Data (Gemini only)
+
+29 Google-published skills covering BigQuery, data pipelines, and GCP platform work. Apache-2.0;
+see [ATTRIBUTION.md](ATTRIBUTION.md). Start at `gcp-data-pipelines`, which routes to the right
+tool for a given job.
+
+| Area | Skills |
+|------|--------|
+| BigQuery | `bigquery-sql`, `bigquery-graph`, `bigquery-ai-ml`, `bigquery-bigframes`, `bigquery-data-transfer-service` |
+| Pipelines & orchestration | `gcp-data-pipelines` (router), `gcp-pipeline-orchestration`, `gcp-pipeline-resource-provisioning`, `gcp-dataflow`, `gcp-spark`, `dbt-bigquery`, `dataform-bigquery` |
+| Managed Airflow / Composer | `gcp-managed-airflow-dag-authoring`, `gcp-managed-airflow-migrations`, `gcp-managed-airflow-recommendations`, `gcp-composer-troubleshooting` |
+| Storage & discovery | `google-cloud-storage-basics`, `gcs-security-assessment`, `discovering-gcp-data-assets`, `federate-lakehouse-catalog` |
+| Data quality & apps | `data-autocleaning`, `building-data-apps`, `notebook-guidance`, `ml-best-practices` |
+| Governance & ops | `accidental-data-loss-prevention`, `enforcing-resource-attribution`, `gcloud-auth-verification`, `managing-python-dependencies`, `skill-repair` |
 
 ## Skill Structure
 
@@ -134,3 +151,9 @@ Use the `/writing-skills` slash command for guidance. Skills follow a TDD-inspir
 4. Verify compliance, iterate to close loopholes
 
 Test with `/testing-skills-with-subagents` before deployment.
+
+## License
+
+Apache-2.0 — see [LICENSE](LICENSE). This repo vendors skills from Google, Trail of Bits,
+Anthropic, and others; per-skill provenance and upstream licenses are recorded in
+[ATTRIBUTION.md](ATTRIBUTION.md).

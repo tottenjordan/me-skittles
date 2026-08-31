@@ -49,7 +49,29 @@ ARTIFACT_GLOBS = ("**/__pycache__", "**/*.pyc")
 # Terms that must not appear under gemini/. The tree is a port of claude/,
 # so a hit here means a Claude-tree file was copied across unmodified —
 # the exact regression a naive upstream re-sync reintroduces.
+#
+# The pattern stays deliberately broad. Narrowing it to markers like CLAUDE.md
+# or .claude-plugin would miss most of the 29 leakage files it originally
+# caught, which mentioned Claude only in prose.
 CLAUDE_TERMS = re.compile(r"claude|anthropic", re.IGNORECASE)
+
+# Files under gemini/ permitted to mention Claude, each with the reason why.
+#
+# These are references to Claude as a third-party tool — an MCP client, or a
+# label value naming which agent ran a job — not Claude-tree content copied
+# across. Every entry needs a reason; a file not listed here still fails, so
+# adding one is a visible decision in review rather than a silent weakening.
+GEMINI_PURITY_ALLOWLIST: dict[str, str] = {
+    "gemini/google-cloud-storage-basics/references/mcp-usage.md": (
+        "documents Claude Desktop and Claude Code as MCP clients for the GCS MCP server"
+    ),
+    "gemini/enforcing-resource-attribution/SKILL.md": (
+        "'claude' is an enumerated attribution label value alongside 'workstation' and 'gemini-cli'"
+    ),
+    "gemini/gcp-pipeline-orchestration/SKILL.md": (
+        "'job:datacloud:claude' is a documented Composer job label value"
+    ),
+}
 
 # Manifest directory each tree's plugin bundles must use.
 PLUGIN_DIR = {"claude": ".claude-plugin", "gemini": ".gemini-plugin"}
@@ -215,23 +237,37 @@ def check_gemini_purity(repo: Path, report: Report) -> None:
     """gemini/ must not contain Claude terminology.
 
     The tree is a port, not a mirror. A hit means Claude-tree content was
-    copied across without adaptation.
+    copied across without adaptation. Files in GEMINI_PURITY_ALLOWLIST are
+    exempt — they reference Claude as a third-party tool rather than being
+    unported Claude-tree content.
     """
     tree = repo / "gemini"
     if not tree.is_dir():
         return
+    seen_allowed: set[str] = set()
     for path in sorted(tree.rglob("*.md")):
         try:
             content = path.read_text(encoding="utf-8")
         except (OSError, UnicodeDecodeError):
             continue
         hits = sorted({m.group(0).lower() for m in CLAUDE_TERMS.finditer(content)})
-        if hits:
-            report.error(
-                path.relative_to(repo),
-                f"Claude terminology in the Gemini tree: {hits} "
-                "(port the content, do not copy it)",
-            )
+        if not hits:
+            continue
+        rel = path.relative_to(repo).as_posix()
+        if rel in GEMINI_PURITY_ALLOWLIST:
+            seen_allowed.add(rel)
+            continue
+        report.error(
+            rel,
+            f"Claude terminology in the Gemini tree: {hits} "
+            "(port the content, do not copy it; if this is a legitimate "
+            "third-party reference, add it to GEMINI_PURITY_ALLOWLIST with a reason)",
+        )
+
+    # A stale allowlist entry hides the fact that the exemption is no longer
+    # needed, so surface it rather than letting it accumulate.
+    for rel in sorted(set(GEMINI_PURITY_ALLOWLIST) - seen_allowed):
+        report.warn(rel, "Stale GEMINI_PURITY_ALLOWLIST entry: file is absent or no longer matches")
 
 
 def check_plugin_manifests(repo: Path, report: Report) -> None:

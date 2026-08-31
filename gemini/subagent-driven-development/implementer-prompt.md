@@ -1,78 +1,37 @@
-# Implementer Subagent Prompt Template
+# Implementer Subagent Prompt
 
-Use this template when dispatching an implementer subagent.
+Dispatch: Agent tool, `subagent_type: "general-purpose"`, description "Implement Task N: <name>".
 
-```
-Task tool (general-purpose):
-  description: "Implement Task N: [task name]"
-  prompt: |
-    You are implementing Task N: [task name]
+---
+You are implementing **Task N: <name>** from an approved plan. Work ONLY on this task.
 
-    ## Task Description
+## Task Description
+<paste the task's full text here — do NOT tell the subagent to read the plan file>
 
-    [FULL TEXT of task from plan - paste it here, don't make subagent read file]
+## Context
+<where this fits in the codebase, dependencies, files involved, patterns to follow>
 
-    ## Context
+## Before You Begin
+If anything about requirements, approach, dependencies, or scope is unclear, ASK NOW before writing
+code. Do not guess.
 
-    [Scene-setting: where this fits, dependencies, architectural context]
+## Your Job
+1. Implement the task following `test-driven-development` (write the failing test first).
+2. Write/adjust tests that verify real behavior, not mocks.
+3. Verify: run the relevant tests plus the project's lint and format commands; confirm green.
+4. Commit once per task, following the project's commit conventions and staging rules.
+5. Self-review, then report.
 
-    ## Before You Begin
+## Self-Review (before reporting)
+- Completeness: did I fully implement everything in the spec?
+- Quality: are names clear and accurate; does it follow existing patterns?
+- Discipline: did I avoid overbuilding / unrequested features?
+- Testing: do the tests verify behavior (not just mock behavior)?
+Fix anything you find before reporting.
 
-    If you have questions about:
-    - The requirements or acceptance criteria
-    - The approach or implementation strategy
-    - Dependencies or assumptions
-    - Anything unclear in the task description
-
-    **Ask them now.** Raise any concerns before starting work.
-
-    ## Your Job
-
-    Once you're clear on requirements:
-    1. Implement exactly what the task specifies
-    2. Write tests (following TDD if task says to)
-    3. Verify implementation works
-    4. Commit your work
-    5. Self-review (see below)
-    6. Report back
-
-    Work from: [directory]
-
-    **While you work:** If you encounter something unexpected or unclear, **ask questions**.
-    It's always OK to pause and clarify. Don't guess or make assumptions.
-
-    ## Before Reporting Back: Self-Review
-
-    Review your work with fresh eyes. Ask yourself:
-
-    **Completeness:**
-    - Did I fully implement everything in the spec?
-    - Did I miss any requirements?
-    - Are there edge cases I didn't handle?
-
-    **Quality:**
-    - Is this my best work?
-    - Are names clear and accurate (match what things do, not how they work)?
-    - Is the code clean and maintainable?
-
-    **Discipline:**
-    - Did I avoid overbuilding (YAGNI)?
-    - Did I only build what was requested?
-    - Did I follow existing patterns in the codebase?
-
-    **Testing:**
-    - Do tests actually verify behavior (not just mock behavior)?
-    - Did I follow TDD if required?
-    - Are tests comprehensive?
-
-    If you find issues during self-review, fix them now before reporting.
-
-    ## Report Format
-
-    When done, report:
-    - What you implemented
-    - What you tested and test results
-    - Files changed
-    - Self-review findings (if any)
-    - Any issues or concerns
-```
+## Report Format
+- What was implemented
+- Testing: commands run + results
+- Files changed
+- Self-review findings
+- Concerns / follow-ups

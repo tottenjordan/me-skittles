@@ -7,6 +7,11 @@ description: Generate professional GCP-branded architecture diagrams using Gemin
 
 Generate publication-quality architecture diagrams styled like official Google Cloud Platform documentation using Gemini image generation.
 
+This skill drives **Vertex AI image generation directly** and overlays official Google Cloud icon
+assets via `scripts/overlay_icons.py`. For diagrams built through the **PaperBanana** MCP pipeline —
+including its own GCP branding path, statistical plots, batch generation, and figure evaluation —
+use the `paperbanana` skill instead.
+
 ## Workflow
 
 ### 1. Gather Architecture Details

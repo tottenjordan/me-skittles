@@ -277,9 +277,9 @@ List all generated diagrams with generation method:
 | Diagram | File | Method |
 |---------|------|--------|
 | Architecture | {prefix}_architecture.png | gcp-diagram skill |
-| Score Trajectory | {prefix}_score_trajectory.png | generate-diagram (PaperBanana) or matplotlib |
-| Cross-Run Comparison | {prefix}_cross_run.png | generate-diagram (PaperBanana) or matplotlib |
-| Container Performance | {prefix}_containers.png | generate-diagram (PaperBanana) or matplotlib |
-| Container Trajectories | {prefix}_container_trajectories.png | generate-diagram (PaperBanana) or matplotlib |
-| Feature Assessment | {prefix}_features.png | generate-diagram (PaperBanana) or matplotlib |
+| Score Trajectory | {prefix}_score_trajectory.png | paperbanana or matplotlib |
+| Cross-Run Comparison | {prefix}_cross_run.png | paperbanana or matplotlib |
+| Container Performance | {prefix}_containers.png | paperbanana or matplotlib |
+| Container Trajectories | {prefix}_container_trajectories.png | paperbanana or matplotlib |
+| Feature Assessment | {prefix}_features.png | paperbanana or matplotlib |
 ```
