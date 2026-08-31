@@ -3,9 +3,11 @@
 Fallback for when the MCP server is unavailable, plus the details that do not belong in the main
 workflow. The MCP tools in `SKILL.md` are the preferred path.
 
-> **Model policy still applies.** Several defaults below predate the current policy — notably
-> `gemini-2.0-flash` (VLM) and `gemini-3-pro-image-preview` (image). Override them to
-> `gemini-3.5-flash` and `gemini-3.1-flash-image`. Never use a `*-pro-image` model.
+> **Set the models explicitly.** PaperBanana's shipped image default,
+> `gemini-3-pro-image-preview`, was shut down 2026-06-25, so image generation fails until you
+> override it. The commands below use the recommended defaults from SKILL.md
+> (`gemini-3.1-flash-image` and `gemini-3.7-flash`); substitute freely — see *Switching models*
+> there for the alternatives.
 
 ## Quick reference
 
@@ -25,10 +27,10 @@ workflow. The MCP tools in `SKILL.md` are the preferred path.
 export GOOGLE_API_KEY=your-key   # or run: paperbanana setup
 ```
 
-Override the shipped defaults to match the required model policy:
+Override the shipped defaults (see the Models section in SKILL.md):
 
 ```bash
-export GOOGLE_VLM_MODEL=gemini-3.5-flash
+export GOOGLE_VLM_MODEL=gemini-3.7-flash
 export GOOGLE_IMAGE_MODEL=gemini-3.1-flash-image
 export GOOGLE_BASE_URL=https://custom-endpoint.example.com  # optional proxy
 ```
@@ -125,7 +127,7 @@ from paperbanana.core.config import Settings
 
 settings = Settings(
     vlm_provider="gemini",
-    vlm_model="gemini-3.5-flash",
+    vlm_model="gemini-3.7-flash",
     image_provider="google_imagen",
     image_model="gemini-3.1-flash-image",
     optimize_inputs=True,
@@ -171,7 +173,7 @@ result = asyncio.run(pipeline.continue_run(
       "env": {
         "GOOGLE_API_KEY": "your-key",
         "IMAGE_MODEL": "gemini-3.1-flash-image",
-        "VLM_MODEL": "gemini-3.5-flash"
+        "VLM_MODEL": "gemini-3.7-flash"
       }
     }
   }

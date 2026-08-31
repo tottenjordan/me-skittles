@@ -29,20 +29,52 @@ what this skill is built around. The CLI, Python API, and pipeline internals are
 For GCP-branded architecture diagrams built by **direct Vertex AI image generation with official
 icon overlay** — a different toolchain from PaperBanana — use the `gcp-diagram` skill instead.
 
-## Model policy (REQUIRED)
+## Models
 
-| Task | Model |
+> **PaperBanana's own defaults are stale.** As of v0.3.0 it ships
+> `IMAGE_MODEL=gemini-3-pro-image-preview`, which Google **shut down on 2026-06-25**. Image
+> generation fails out of the box until you set `IMAGE_MODEL`. Its VLM default,
+> `gemini-2.5-flash`, still works.
+
+### Recommended defaults
+
+| Slot | Model | Why |
+|---|---|---|
+| `IMAGE_MODEL` | `gemini-3.1-flash-image` | Nano Banana 2 — Pro-level quality at Flash cost, 4K, strong text rendering. The stable replacement for the retired `-preview` ID. |
+| `VLM_MODEL` | `gemini-3.7-flash` | Latest stable Flash (GA 2026-08-13). Cheapest of the 3.x Flash tier under introductory pricing through 2026-12-31. |
+
+Set both on the MCP server (`IMAGE_MODEL` / `VLM_MODEL` in its `env` block — see
+[references/cli.md](references/cli.md)) so single-figure tools need no model arguments.
+**Batch, orchestrate, and continue tools fall back to their own defaults**, so pass models
+explicitly there:
+
+```
+image_model="gemini-3.1-flash-image", vlm_model="gemini-3.7-flash", image_provider="gemini", vlm_provider="gemini"
+```
+
+### Switching models
+
+Both slots are free to change — pick per job:
+
+| Instead of the default, use | When |
 |---|---|
-| Image generation (diagrams, plots, visuals) | `gemini-3.1-flash-image` |
-| Text / VLM (planning, captions, critique, evaluation) | `gemini-3.5-flash` |
+| `gemini-3.1-flash-lite-image` | Cheapest image tier (~$0.034 per 1K image, ~4s). Rapid ideation, high-volume batches. |
+| `gemini-3-pro-image` | Highest fidelity — reasoning-heavy composition, complex multi-turn edits, up to 14 reference inputs. Costs materially more per image. |
+| `gemini-3.5-flash` / `gemini-3.6-flash` | Pinning to a proven earlier Flash generation. |
+| `gemini-2.5-flash` | Most conservative VLM: PaperBanana's own default and the only one in its cost table (below). |
 
-- The MCP server is **preconfigured** with these via `IMAGE_MODEL` / `VLM_MODEL`, so
-  **single-figure tools need no model args** — do not override them.
-- **Batch / orchestrate / continue tools default to their own models** — always pass explicitly:
-  `image_model="gemini-3.1-flash-image"`, `vlm_model="gemini-3.5-flash"` (and `*_provider="gemini"`).
-- Never substitute `gemini-2.5-*` or any `*-pro-*` / `*-pro-image` model. The pro and preview image
-  models burn far more of a small quota. Older docs listing `gemini-3-pro-image-preview` as the
-  default are superseded by this table.
+Avoid any `*-preview` image ID — `gemini-3.1-flash-image-preview` and `gemini-3-pro-image-preview`
+were both shut down 2026-06-25 — and `gemini-2.0-flash`, shut down 2026-06-01.
+
+### Two caveats
+
+- **Cost tracking is incomplete.** `paperbanana/core/pricing.py` only prices the retired
+  `-preview` image IDs and Flash models up to `gemini-3-pro`. Runs on the recommended models
+  report **$0**, which is a gap in the estimate, not a free run.
+- **`thinking_budget` is dated.** PaperBanana sends `thinking_budget=8192` for every model matching
+  `gemini-2.5+`, while Gemini 3.x expects the `thinking_level` enum. This applies equally to
+  3.5/3.6/3.7 Flash, so it is not a reason to prefer one over another — but if you see thinking
+  config rejected, `gemini-2.5-flash` is the fallback that matches PaperBanana's call path.
 
 ## Tools
 
@@ -73,7 +105,7 @@ see [references/cli.md](references/cli.md).
    [references/gcp-brand.md](references/gcp-brand.md). For GCP diagrams, `source_context` and
    `caption` must carry the brand phrases and color conventions from that file.
 4. **Refine cheaply** — do not regenerate from scratch. Call
-   `continue_diagram(run_id=..., feedback=..., image_model="gemini-3.1-flash-image", vlm_model="gemini-3.5-flash")`;
+   `continue_diagram(run_id=..., feedback=..., image_model="gemini-3.1-flash-image", vlm_model="gemini-3.7-flash")`;
    it reuses retrieval and planning.
 
 ## Evaluation
@@ -102,10 +134,10 @@ Caveats that still apply:
 | Mistake | Fix |
 |---|---|
 | Passing `image_model`/`vlm_model` to `generate_diagram`/`generate_plot` | Unsupported — they read the server env; omit. |
-| Letting `batch_*` / `orchestrate_*` pick default models | Always pass `image_model="gemini-3.1-flash-image"`, `vlm_model="gemini-3.5-flash"`. |
+| Letting `batch_*` / `orchestrate_*` pick default models | Always pass `image_model="gemini-3.1-flash-image"`, `vlm_model="gemini-3.7-flash"`. |
 | Regenerating just to tweak a figure | Use `continue_*` with the `run_id`. |
 | Assuming PaperBanana eats the Vertex 2 RPM cap | It bills the separate Gemini Developer API pool. |
-| Reaching for a `*-pro-image` model | Forbidden by the model policy above — it burns quota for no gain here. |
+| Using a `*-preview` image model ID | Both were shut down 2026-06-25 — use the stable IDs in Models above. |
 | Trademarked GCP logos render wrong | Expected — generative models approximate icons. Keep every text label spelling-accurate (table in gcp-brand.md). |
 | Low-quality CLI output | Add `--optimize --auto`; see [references/cli.md](references/cli.md). |
 

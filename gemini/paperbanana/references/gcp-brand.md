@@ -68,5 +68,5 @@ color conventions below into `source_context` / `caption`.
 - [ ] Text readable at display size; no overlapping elements
 
 If any check fails, refine with `continue_diagram(run_id=..., feedback="fix: <what>",
-image_model="gemini-3.1-flash-image", vlm_model="gemini-3.5-flash")` rather than
+image_model="gemini-3.1-flash-image", vlm_model="gemini-3.7-flash")` rather than
 regenerating from scratch.
