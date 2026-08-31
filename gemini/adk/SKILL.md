@@ -373,43 +373,6 @@ GOOGLE_CLOUD_LOCATION="us-central1"
 GOOGLE_GENAI_USE_VERTEXAI="1"
 ```
 
-## Common Patterns
-
-### Error Handling in Tools
-
-```python
-def safe_operation(data: str) -> dict:
-    """Performs an operation safely.
-
-    Args:
-        data: The input data.
-    """
-    try:
-        result = risky_operation(data)
-        return {"status": "success", "result": result}
-    except ValueError as e:
-        return {"status": "error", "message": str(e)}
-    except Exception as e:
-        return {"status": "error", "message": "Unexpected error occurred"}
-```
-
-### Agent with Context
-
-```python
-root_agent = Agent(
-    name="context_aware",
-    model="gemini-flash-latest",
-    instruction="""You are a helpful assistant.
-
-    Context:
-    - Current user: {user_name}
-    - User preferences: {preferences}
-
-    Use this context to personalize responses.""",
-    tools=[get_data, update_data]
-)
-```
-
 ## Dependencies
 
 ```
@@ -417,102 +380,12 @@ google-adk
 google-adk[a2a]  # For A2A support
 ```
 
-## DiscoveryEngineSearchTool vs VertexAiSearchTool
+## Advanced patterns
 
-**Use `DiscoveryEngineSearchTool` when the agent has sub-agents or mixed tool types.**
-
-`VertexAiSearchTool` adds a built-in Gemini retrieval tool that **cannot coexist** with function tools like `transfer_to_agent` (injected by sub-agents). Use `DiscoveryEngineSearchTool` instead — it wraps the Discovery Engine SearchService REST API as a regular `FunctionTool`, avoiding this conflict.
-
-```python
-from google.adk.tools.discovery_engine_search_tool import DiscoveryEngineSearchTool
-from google.cloud import discoveryengine_v1beta as discoveryengine
-
-# Restrict to specific data stores to avoid pulling in workspace connectors
-search_tool = DiscoveryEngineSearchTool(
-    search_engine_id=f"projects/{project}/locations/global/collections/default_collection/engines/{engine}",
-    data_store_specs=[
-        discoveryengine.SearchRequest.DataStoreSpec(
-            data_store=f"projects/{project}/locations/global/collections/default_collection/dataStores/sop-store"
-        ),
-    ],
-)
-
-root_agent = Agent(
-    name="assistant",
-    model="gemini-2.5-flash",
-    tools=[search_tool],           # Works alongside transfer tools
-    sub_agents=[analytics_agent],  # Sub-agents inject transfer_to_agent
-)
-```
-
-**Critical**: Always specify `data_store_specs` to restrict which data stores are searched. If an engine has workspace connectors (Gmail, Calendar, Jira) attached, they inflate the token count — a single engine with 9 data stores can push input tokens above the 1M context limit.
-
-## Config-Driven Design Pattern
-
-Avoid hardcoding project IDs, retailer names, or model names. Use a central YAML config with env var overrides for deployment:
-
-```python
-import os
-from pathlib import Path
-import yaml
-
-CONFIG_PATH = Path(__file__).resolve().parent.parent / "config" / "settings.yaml"
-
-def _load_config():
-    config = {}
-    if CONFIG_PATH.exists():
-        with open(CONFIG_PATH) as f:
-            config = yaml.safe_load(f)
-
-    # Env var overrides for Agent Engine deployment
-    if os.environ.get("RETAILER_NAME"):
-        config.setdefault("retailer", {})["name"] = os.environ["RETAILER_NAME"]
-    if os.environ.get("ADK_MODEL"):
-        config.setdefault("models", {})["adk"] = os.environ["ADK_MODEL"]
-
-    config.setdefault("models", {})
-    config["models"].setdefault("adk", "gemini-2.5-flash")
-    return config
-```
-
-This lets the same agent code run locally and on Agent Engine without code changes.
-
-## Tool Output Size — Avoid Token Overflow
-
-**Never return large binary data (images, PDFs) as base64 in tool responses.** A single image encoded as base64 is ~400K-1.5M tokens, which gets stored in session history and causes context overflow on subsequent turns.
-
-Instead, upload to GCS and return a URI:
-
-```python
-def generate_image(product_name: str) -> dict:
-    # ... generate image_bytes ...
-    from google.cloud import storage
-    client = storage.Client(project=project_id)
-    bucket = client.bucket(gcs_bucket)
-    blob = bucket.blob(f"images/{product_name}.png")
-    blob.upload_from_string(image_bytes, content_type="image/png")
-    return {
-        "status": "success",
-        "image_uri": f"gs://{gcs_bucket}/images/{product_name}.png",
-    }
-```
-
-## Memory Bank (PreloadMemoryTool)
-
-For cross-session personalization, add `PreloadMemoryTool` to the root agent. It auto-loads user memories at conversation start. Memory Bank is **auto-enabled** on Agent Engine when ADK >= 1.5.0.
-
-```python
-from google.adk.tools.preload_memory_tool import PreloadMemoryTool
-
-root_agent = Agent(
-    name="assistant",
-    model="gemini-2.5-flash",
-    tools=[search_tool, PreloadMemoryTool()],
-    sub_agents=[analytics_agent],
-)
-```
-
-To generate memories after a session, call `memory_service.add_session_to_memory(session)` explicitly — `PreloadMemoryTool` only reads.
+Search-tool selection (`DiscoveryEngineSearchTool` vs `VertexAiSearchTool`), the
+config-driven design pattern, keeping tool output under the token ceiling, Memory Bank
+via `PreloadMemoryTool`, and assorted common patterns:
+**[references/advanced_patterns.md](references/advanced_patterns.md)**
 
 ## ADK Evaluations
 
