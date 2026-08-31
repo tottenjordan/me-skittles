@@ -72,6 +72,8 @@ The `description` field controls when the skill is auto-triggered. Write it as t
   `writing-skills/anthropic-best-practices.md`; move detail into `references/` and link it
 - No retired model IDs (see `DEPRECATED_MODELS`) outside deprecation notes
 - No frontmatter keys the harness ignores, e.g. `when_to_use` — triggers must live in `description`
+- Helper scripts declare third-party dependencies via PEP 723 inline metadata, so `uv run <script>`
+  works with no setup (imports guarded by `except ImportError` are exempt)
 
 Run it before committing any skill change. It is the guard against re-syncing
 upstream content that reintroduces fixed defects — run `--tree gemini` after

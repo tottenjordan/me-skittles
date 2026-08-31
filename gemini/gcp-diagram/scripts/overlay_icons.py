@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.10"
+# dependencies = ["pillow>=10.0"]
+# ///
 """Overlay official GCP product icons onto a Gemini-generated architecture diagram.
 
 Usage:

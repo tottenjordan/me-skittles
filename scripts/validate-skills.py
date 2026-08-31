@@ -16,6 +16,7 @@ Checks the invariants that make a skill loadable and keep the two trees honest:
 - Plugin bundles use the manifest directory matching their tree
 - SKILL.md stays under 500 lines (warns at 450) so progressive disclosure is preserved
 - No retired model IDs outside of text that discusses their retirement
+- Helper scripts declare their third-party dependencies (warning)
 - No frontmatter keys the harness silently ignores (warning)
 - Relative markdown links resolve (warning; template placeholders are skipped)
 
@@ -372,6 +373,56 @@ def check_frontmatter_keys(skill_file: Path, repo: Path, frontmatter: dict, repo
             report.warn(skill_file.relative_to(repo), f"Frontmatter key `{key}`: {why}")
 
 
+def check_script_dependencies(repo: Path, report: Report) -> None:
+    """Warn when a helper script imports a third-party package it never declares.
+
+    A skill's script is only useful if it runs. Without a declaration the reader
+    has to infer the install list from import statements, and gets an
+    ImportError if they guess wrong. Declaring PEP 723 inline metadata makes
+    `uv run <script>` self-installing — the pattern this repo already uses.
+
+    Local sibling modules are not third-party, so a `.py` next to the script
+    counts as satisfied.
+    """
+    stdlib = set(sys.stdlib_module_names)
+    for tree in TREES:
+        root = repo / tree
+        if not root.is_dir():
+            continue
+        for path in sorted(root.rglob("*.py")):
+            if "node_modules" in path.parts or "__pycache__" in path.parts:
+                continue
+            try:
+                src = path.read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError):
+                continue
+            if "# /// script" in src:
+                continue  # declares its own dependencies
+            if any((p / "pyproject.toml").exists() for p in (path.parent, path.parent.parent)):
+                continue  # covered by a project manifest
+            siblings = {p.stem for p in path.parent.glob("*.py")} | {
+                p.name for p in path.parent.iterdir() if p.is_dir()
+            }
+            # An import guarded by `except ImportError` is an availability probe,
+            # not a hard requirement — check_install.py exists precisely to detect
+            # a missing package, so declaring it would defeat the script.
+            optional = set(
+                re.findall(
+                    r"try:\s*\n\s+(?:import|from)\s+([a-zA-Z_]\w*)[\s\S]{0,400}?except\s+"
+                    r"\(?[\w\s,]*ImportError",
+                    src,
+                )
+            )
+            imported = set(re.findall(r"^\s*(?:import|from)\s+([a-zA-Z_]\w*)", src, re.M))
+            undeclared = sorted(imported - stdlib - siblings - optional)
+            if undeclared:
+                report.warn(
+                    path.relative_to(repo),
+                    f"Imports undeclared third-party packages {undeclared} — add PEP 723 "
+                    "inline metadata (`# /// script`) so `uv run` installs them",
+                )
+
+
 def check_plugin_manifests(repo: Path, report: Report) -> None:
     """Plugin bundles must use the manifest directory matching their tree."""
     for tree in TREES:
@@ -447,6 +498,7 @@ def main() -> int:
     check_symlinks(repo, report)
     check_artifacts(repo, report)
     check_plugin_manifests(repo, report)
+    check_script_dependencies(repo, report)
     check_deprecated_models(repo, report)
     if "gemini" in trees:
         check_gemini_purity(repo, report)

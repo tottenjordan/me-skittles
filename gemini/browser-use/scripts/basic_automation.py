@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["browser-use>=0.1"]
+# ///
 """
 Basic browser automation template using browser-use.
 This script demonstrates the core pattern for AI-powered browser automation.
