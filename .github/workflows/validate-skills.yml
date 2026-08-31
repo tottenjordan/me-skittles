@@ -21,12 +21,13 @@ jobs:
       - name: Validate every SKILL.md in claude/ and gemini/
         run: uv run scripts/validate-skills.py
 
-      # Bundle-specific checks (required sections, line-count limits) for the
-      # vendored Trail of Bits skills. Ten of these skills currently exceed the
-      # bundle's own 500-line limit; that predates this workflow, so the step
-      # reports without failing the build. Drop continue-on-error once the
-      # over-length skills are split.
-      - name: Validate testing-handbook bundle (non-blocking)
-        continue-on-error: true
+      # Bundle-specific checks (required per-type sections, Hugo shortcodes) for
+      # the vendored Trail of Bits skills, which the repo-wide validator leaves
+      # to this script.
+      - name: Validate testing-handbook bundle
         working-directory: claude/testing-handbook-skills
+        run: uv run scripts/validate-skills.py
+
+      - name: Validate testing-handbook bundle (Gemini tree)
+        working-directory: gemini/testing-handbook-skills
         run: uv run scripts/validate-skills.py
