@@ -68,7 +68,7 @@ def get_data(query: str) -> dict:
     return {"status": "success", "data": "..."}
 
 agent = Agent(
-    model="gemini-2.0-flash",
+    model="gemini-flash-latest",
     name="data_agent",
     instruction="You help users find data.",
     tools=[get_data]
@@ -220,7 +220,7 @@ def get_pto_balance(user_id: str) -> dict:
 
 pto_agent = Agent(
     name="pto_agent",
-    model="gemini-2.0-flash",
+    model="gemini-flash-latest",
     instruction="You check PTO balances. Use get_pto_balance when asked.",
     tools=[get_pto_balance]
 )

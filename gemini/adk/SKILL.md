@@ -67,7 +67,7 @@ def calculate(expression: str) -> dict:
 
 root_agent = Agent(
     name="assistant_agent",
-    model="gemini-2.0-flash",
+    model="gemini-flash-latest",
     description="A helpful assistant that can check weather and do math.",
     instruction="""You are a helpful assistant.
     Use get_weather when asked about weather.
@@ -82,7 +82,7 @@ root_agent = Agent(
 | Parameter | Required | Description |
 |-----------|----------|-------------|
 | `name` | Yes | Unique identifier |
-| `model` | Yes | LLM model (e.g., `gemini-2.0-flash`) |
+| `model` | Yes | LLM model (e.g., `gemini-flash-latest`) |
 | `instruction` | Yes | Agent behavior and personality |
 | `description` | No | Summary of capabilities |
 | `tools` | No | List of functions/tools |
@@ -98,7 +98,7 @@ Use variables in instructions:
 ```python
 root_agent = Agent(
     name="greeter",
-    model="gemini-2.0-flash",
+    model="gemini-flash-latest",
     instruction="Greet the user. Their name is {user_name}.",
     tools=[]
 )
@@ -205,14 +205,14 @@ retry_agent = LoopAgent(
 ```python
 specialist_agent = Agent(
     name="specialist",
-    model="gemini-2.0-flash",
+    model="gemini-flash-latest",
     instruction="You are a specialist.",
     tools=[specialist_tool]
 )
 
 manager_agent = Agent(
     name="manager",
-    model="gemini-2.0-flash",
+    model="gemini-flash-latest",
     instruction="Delegate specialist tasks to the specialist agent.",
     tools=[transfer_tool],
     sub_agents=[specialist_agent]
@@ -302,7 +302,7 @@ class WeatherReport(BaseModel):
 
 root_agent = Agent(
     name="weather_agent",
-    model="gemini-2.0-flash",
+    model="gemini-flash-latest",
     instruction="Provide weather information as structured data.",
     output_schema=WeatherReport
 )
@@ -363,7 +363,7 @@ def safe_operation(data: str) -> dict:
 ```python
 root_agent = Agent(
     name="context_aware",
-    model="gemini-2.0-flash",
+    model="gemini-flash-latest",
     instruction="""You are a helpful assistant.
 
     Context:

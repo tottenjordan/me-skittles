@@ -213,7 +213,7 @@ async def _generate_research_direct(self, ctx):
     from google import genai
     client = genai.Client(vertexai=True)
     response = client.models.generate_content(
-        model="gemini-3-flash-preview",
+        model="gemini-3.5-flash",
         contents=prompt,
         config=types.GenerateContentConfig(
             thinking_config=types.ThinkingConfig(thinking_budget=0),
@@ -229,7 +229,9 @@ async def _generate_research_direct(self, ctx):
 
 ### google_search Grounding Incompatibilities
 
-- `google_search` (ADK grounding tool) returns **0 events** on `gemini-3-flash-preview` — use `gemini-2.0-flash` if grounding is needed
+- `google_search` (ADK grounding tool) returned **0 events** on `gemini-3-flash-preview`, since
+  superseded by `gemini-3.5-flash`. Re-verify on current models; if grounding returns nothing, fall
+  back to `gemini-flash-latest`
 - `google_search` + non-search tools in same agent → error: "Multiple tools are supported only when they are all search tools"
 - `google_search` as sub-agent tool on AE → 0 events (separate from the sub-agent propagation bug)
 
@@ -261,5 +263,5 @@ await run_skill_council()  # Best-effort, may timeout
 - [ ] Values are serializable (no custom objects, no deep nesting)
 - [ ] Dict state_deltas explicitly null nested keys (AE merges, doesn't replace)
 - [ ] Sub-agents tested on AE — use direct model call if events return empty
-- [ ] google_search grounding only used with compatible models (gemini-2.0-flash)
+- [ ] google_search grounding only used with compatible models (gemini-flash-latest)
 - [ ] Absolute caps on retry loops (not just counter-based — pending ops can bypass counters)

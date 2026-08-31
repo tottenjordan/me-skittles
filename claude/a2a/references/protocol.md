@@ -196,7 +196,7 @@ from google.adk.agents.llm_agent import Agent
 
 # Create your agent
 root_agent = Agent(
-    model="gemini-2.0-flash-exp",
+    model="gemini-flash-latest",
     name="My Agent",
     description="What my agent does",
     tools=[...],
@@ -383,7 +383,7 @@ import threading
 
 # Leaf agent with tools
 leaf_agent = Agent(
-    model="gemini-2.0-flash-exp",
+    model="gemini-flash-latest",
     name="PTO Agent",
     description="Manages PTO requests and balances",
     tools=[get_pto_balance, request_pto],
@@ -399,7 +399,7 @@ remote_pto_agent = RemoteA2aAgent(
 )
 
 hr_agent = Agent(
-    model="gemini-2.0-flash-exp",
+    model="gemini-flash-latest",
     name="HR Agent",
     description="Handles HR queries",
     tools=[TransferToAgentTool(remote_agent=remote_pto_agent)],

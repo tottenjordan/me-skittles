@@ -121,7 +121,7 @@ from google.adk.agents import Agent
 
 agent = Agent(
     name="my_agent",
-    model="gemini-2.0-flash",
+    model="gemini-flash-latest",
     # ADK manages sessions automatically
 )
 ```
@@ -414,7 +414,7 @@ from google.adk.a2a.utils.agent_to_a2a import to_a2a
 # Create agent
 agent = Agent(
     name="my_agent",
-    model="gemini-2.0-flash",
+    model="gemini-flash-latest",
     tools=[my_tool]
 )
 
@@ -512,7 +512,7 @@ deployed = agent_engines.create(
 ### Create and Use a Session
 ```python
 # Automatic (ADK)
-agent = Agent(name="my_agent", model="gemini-2.0-flash")
+agent = Agent(name="my_agent", model="gemini-flash-latest")
 # Sessions managed automatically
 
 # Manual (API)

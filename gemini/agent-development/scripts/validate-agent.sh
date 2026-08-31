@@ -128,11 +128,11 @@ else
   echo "✅ model: $MODEL"
 
   case "$MODEL" in
-    inherit|gemini-3-flash-preview|gemini-1.5-pro|gemini-1.5-flash)
+    inherit|gemini-flash-latest|gemini-3.1-pro-preview|gemini-3.5-flash-lite)
       # Valid model
       ;;
     *)
-      echo "⚠️  Unknown model: $MODEL (valid: inherit, gemini-3-flash-preview, gemini-1.5-pro, gemini-1.5-flash)"
+      echo "⚠️  Unknown model: $MODEL (valid: inherit, gemini-flash-latest, gemini-3.1-pro-preview, gemini-3.5-flash-lite)"
       ((warning_count++))
       ;;
   esac
