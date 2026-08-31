@@ -2039,9 +2039,9 @@ adaptive_agent = AdaptiveQualityAgent(
 ## Additional Resources
 
 ### Official Documentation
-- Main Documentation: https://google.github.io/adk-docs/
-- Python Getting Started: https://google.github.io/adk-docs/get-started/python/
-- API Reference: https://google.github.io/adk-docs/api-reference/python/
+- Main Documentation: https://adk.dev/
+- Python Getting Started: https://adk.dev/get-started/python/
+- API Reference: https://adk.dev/api-reference/python/
 
 ### Key Concepts
 - LLM Agents: Non-deterministic, reasoning-based agents

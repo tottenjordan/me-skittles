@@ -1,6 +1,6 @@
 # ADK State Management Best Practices
 
-Source: https://google.github.io/adk-docs/sessions/state/
+Source: https://adk.dev/sessions/state/
 
 ## Core Rules
 

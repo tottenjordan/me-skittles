@@ -243,7 +243,7 @@ def deploy_agent(
         "google-adk[a2a]",
         "uvicorn",
         "fastapi",
-        "a2a-sdk>=0.3.5"
+        "a2a-sdk>=1.1"
     ]
 
     aiplatform.init(project=project_id, location=location, staging_bucket=staging_bucket)
@@ -333,7 +333,7 @@ google-adk[a2a]
 google-cloud-aiplatform[agent_engines,a2a]
 uvicorn
 fastapi
-a2a-sdk>=0.3.5
+a2a-sdk>=1.1
 ```
 
 ## Practical Lessons from Production

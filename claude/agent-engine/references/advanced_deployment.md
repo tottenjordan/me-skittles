@@ -566,8 +566,8 @@ parent = Agent(
 ## Additional Resources
 
 - **Official Documentation**: https://cloud.google.com/agent-builder/agent-engine/docs
-- **ADK GitHub**: https://github.com/google/adk
-- **A2A Protocol Spec**: https://github.com/google/a2a-spec
+- **ADK GitHub**: https://github.com/google/adk-python
+- **A2A Protocol Spec**: https://github.com/a2aproject/A2A
 - **Vertex AI Agent Engine Pricing**: https://cloud.google.com/agent-builder/pricing
 
 ---

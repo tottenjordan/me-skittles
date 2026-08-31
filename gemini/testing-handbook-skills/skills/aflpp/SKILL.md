@@ -624,7 +624,7 @@ Build and fuzz:
 **[AFL++ GitHub Repository](https://github.com/AFLplusplus/AFLplusplus)**
 Official repository with comprehensive documentation, examples, and issue tracker.
 
-**[Fuzzing in Depth](https://aflplus.plus/docs/fuzzing_in_depth.md)**
+**[Fuzzing in Depth](https://aflplus.plus/docs/fuzzing_in_depth/)**
 Advanced documentation by the AFL++ team covering instrumentation modes, optimization techniques, and advanced use cases.
 
 **[AFL++ Under The Hood](https://blog.ritsec.club/posts/afl-under-hood/)**

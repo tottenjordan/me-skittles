@@ -27,6 +27,29 @@ pip install google-adk
 pip install google-adk[a2a]
 ```
 
+## ADK 2.x
+
+ADK 2.0 added the **Workflow Runtime**, moving execution from a hierarchical agent executor to a
+graph engine where agents, tools, and functions are nodes. `google.adk.Workflow` is a graph-based
+node wired with explicit `edges`.
+
+**Everything in this skill still works on 2.x** — `Agent`, `LlmAgent`, `SequentialAgent`,
+`ParallelAgent`, `LoopAgent`, `Runner`, `ToolContext`, and `InMemorySessionService` were all
+verified importable against `google-adk==2.8.0`. The graph runtime is an addition, not a
+replacement.
+
+Breaking changes that matter if you are upgrading from 1.x:
+
+| Change | What to do |
+|---|---|
+| `Event` gained `node_info` and `output` | A custom `BaseSessionService` backed by rigid SQL columns needs a schema update |
+| Tools that swallow exceptions | Let exceptions propagate — a broad `except Exception:` disables automatic retries, and catching `BaseException` traps `NodeInterruptedError` and breaks human-in-the-loop pauses |
+| Manual `session.events.append(...)` | `yield` the event from your node or agent instead; the runner needs control of emission for routing and streaming |
+| Custom `run()` overrides | Move the logic into `BeforeAgentCallback` / `AfterAgentCallback` |
+| Session compatibility | 2.0 sessions are readable by 1.28+, but not by older 1.x |
+
+Full migration guide: [adk.dev/2.0](https://adk.dev/2.0/)
+
 ## Project Structure
 
 ```
@@ -488,7 +511,7 @@ To generate memories after a session, call `memory_service.add_session_to_memory
 ## ADK Evaluations
 
 For evaluation methodology, metrics, evalset schema, and running `adk eval`, see the
-[ADK evaluation docs](https://google.github.io/adk-docs/evaluate/).
+[ADK evaluation docs](https://adk.dev/evaluate/).
 
 ## Troubleshooting
 
