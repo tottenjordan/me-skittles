@@ -55,7 +55,22 @@ The `description` field controls when the skill is auto-triggered. Write it as t
 
 ### Multi-skill Bundles
 
-`testing-handbook-skills` and `property-based-testing` are plugin-style bundles containing multiple sub-skills under a `skills/` directory, with `.claude-plugin/` configuration and validation scripts.
+`testing-handbook-skills` and `property-based-testing` are plugin-style bundles containing multiple sub-skills under a `skills/` directory, with validation scripts and a manifest directory matching their tree — `.claude-plugin/` under `claude/`, `.gemini-plugin/` under `gemini/`.
+
+## Validation
+
+`uv run scripts/validate-skills.py` checks every `SKILL.md` in both trees and runs in CI on every push and PR. It enforces:
+
+- Frontmatter present, closed, and parsing as YAML
+- `name` present, lowercase-kebab, and matching its directory
+- `description` present and non-trivial (skills auto-trigger from it)
+- No dangling symlinks or committed build artifacts
+- No Claude terminology under `gemini/` — that tree is a port, not a copy
+- Plugin bundles using the manifest directory for their tree
+
+Run it before committing any skill change. It is the guard against re-syncing
+upstream content that reintroduces fixed defects — run `--tree gemini` after
+pulling from an upstream Gemini skills repo.
 
 ## Conventions
 
@@ -63,4 +78,5 @@ The `description` field controls when the skill is auto-triggered. Write it as t
 - When creating or modifying skills, use the `/writing-skills` skill for guidance
 - Test skills with `/testing-skills-with-subagents` before deployment
 - The `playwright-skill` directory contains a Node.js package (`package.json`, `run.js`) — run `npm install` there if working on browser automation
-- Validation for testing-handbook skills: `uv run scripts/validate-skills.py` from `claude/testing-handbook-skills/`
+- Repo-wide validation: `uv run scripts/validate-skills.py` (see Validation above) — run before committing
+- Bundle-specific validation for testing-handbook skills: `uv run scripts/validate-skills.py` from `claude/testing-handbook-skills/` (checks required sections and line limits; 10 skills currently exceed its 500-line limit)

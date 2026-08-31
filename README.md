@@ -111,6 +111,19 @@ skill-name/
 └── assets/           # Templates, icons, etc.
 ```
 
+## Validation
+
+```bash
+uv run scripts/validate-skills.py           # all skills, both trees
+uv run scripts/validate-skills.py --tree gemini
+uv run scripts/validate-skills.py --json    # machine-readable
+```
+
+Checks that every `SKILL.md` has valid frontmatter (`name` lowercase-kebab and matching its
+directory, `description` present so the skill can auto-trigger), that no symlinks dangle, that no
+build artifacts are committed, and that `gemini/` stays free of Claude terminology. Runs in CI on
+every push and pull request.
+
 ## Creating Skills
 
 Use the `/writing-skills` slash command for guidance. Skills follow a TDD-inspired process:
