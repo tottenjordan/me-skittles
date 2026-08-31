@@ -68,6 +68,8 @@ The `description` field controls when the skill is auto-triggered. Write it as t
 - No dangling symlinks or committed build artifacts
 - No Claude terminology under `gemini/` — that tree is a port, not a copy
 - Plugin bundles using the manifest directory for their tree
+- No retired model IDs (see `DEPRECATED_MODELS`) outside deprecation notes
+- No frontmatter keys the harness ignores, e.g. `when_to_use` — triggers must live in `description`
 
 Run it before committing any skill change. It is the guard against re-syncing
 upstream content that reintroduces fixed defects — run `--tree gemini` after

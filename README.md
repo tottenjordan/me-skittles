@@ -138,8 +138,8 @@ uv run scripts/validate-skills.py --json    # machine-readable
 
 Checks that every `SKILL.md` has valid frontmatter (`name` lowercase-kebab and matching its
 directory, `description` present so the skill can auto-trigger), that no symlinks dangle, that no
-build artifacts are committed, and that `gemini/` stays free of Claude terminology. Runs in CI on
-every push and pull request.
+build artifacts are committed, that no skill documents a retired model ID, and that `gemini/` stays
+free of Claude terminology. Runs in CI on every push and pull request.
 
 ## Creating Skills
 

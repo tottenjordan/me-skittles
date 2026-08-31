@@ -14,6 +14,8 @@ Checks the invariants that make a skill loadable and keep the two trees honest:
 - No committed build artifacts (__pycache__, *.pyc)
 - gemini/ contains no Claude-specific terminology (it is a port, not a copy)
 - Plugin bundles use the manifest directory matching their tree
+- No retired model IDs outside of text that discusses their retirement
+- No frontmatter keys the harness silently ignores (warning)
 - Relative markdown links resolve (warning; template placeholders are skipped)
 
 Deliberately NOT checked here: required sections, line-count limits, and
@@ -45,6 +47,37 @@ MIN_DESCRIPTION_LENGTH = 20
 NAME_PATTERN = re.compile(r"^[a-z0-9-]{1,64}$")
 LINK_PATTERN = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
 ARTIFACT_GLOBS = ("**/__pycache__", "**/*.pyc")
+
+# Frontmatter keys that look right but are not what the harness reads.
+# `when_to_use` is the worst of these: skills auto-trigger from `description`
+# alone, so trigger conditions parked in `when_to_use` are simply never seen.
+DISCOURAGED_KEYS = {
+    "when_to_use": "triggers belong in `description` — only that field drives auto-triggering",
+    "tools": "skills use `allowed-tools`; `tools` is the agent-definition field",
+}
+
+# Model IDs that providers have retired. Skills documenting a dead model send
+# callers to an endpoint that 404s, and this rots silently — the audit that
+# added this check found gemini-2.0-flash in 76 places, months after shutdown.
+# Value is the current replacement.
+DEPRECATED_MODELS = {
+    "gemini-2.0-flash": "gemini-flash-latest",
+    "gemini-2.0-flash-exp": "gemini-flash-latest",
+    "gemini-1.5-pro": "gemini-3.1-pro-preview",
+    "gemini-1.5-flash": "gemini-flash-latest",
+    "gemini-3-flash-preview": "gemini-3.5-flash",
+    "gemini-3-pro-preview": "gemini-3.1-pro-preview",
+    "gemini-3-pro-image-preview": "gemini-3-pro-image",
+    "gemini-3.1-flash-image-preview": "gemini-3.1-flash-image",
+    "gemini-2.5-flash-image": "gemini-3.1-flash-image",
+    "claude-sonnet-4-5": "claude-sonnet-5",
+    "gpt-4": "gpt-5.6",
+}
+
+# A line that is *about* a model's retirement may name it legitimately.
+DEPRECATION_CONTEXT = re.compile(
+    r"deprecat|shut ?down|retired|superseded|no longer|do not pin|avoid any|since\b", re.IGNORECASE
+)
 
 # Terms that must not appear under gemini/. The tree is a port of claude/,
 # so a hit here means a Claude-tree file was copied across unmodified —
@@ -187,6 +220,7 @@ def check_skill(skill_file: Path, repo: Path, report: Report) -> None:
                 rel, f"Description too long: {len(description)} chars (max {MAX_DESCRIPTION_LENGTH})"
             )
 
+    check_frontmatter_keys(skill_file, repo, frontmatter, report)
     check_links(content, skill_file, repo, report)
 
 
@@ -270,6 +304,45 @@ def check_gemini_purity(repo: Path, report: Report) -> None:
         report.warn(rel, "Stale GEMINI_PURITY_ALLOWLIST entry: file is absent or no longer matches")
 
 
+def check_deprecated_models(repo: Path, report: Report) -> None:
+    """Flag retired model IDs outside of text that discusses their retirement.
+
+    Documenting a dead model ID hands the reader an endpoint that 404s. Lines
+    that are explicitly about a deprecation are allowed to name the model.
+    """
+    for tree in TREES:
+        root = repo / tree
+        if not root.is_dir():
+            continue
+        for path in sorted(root.rglob("*")):
+            if path.suffix not in {".md", ".py", ".sh", ".js", ".ts"} or not path.is_file():
+                continue
+            try:
+                lines = path.read_text(encoding="utf-8").splitlines()
+            except (OSError, UnicodeDecodeError):
+                continue
+            for num, line in enumerate(lines, start=1):
+                if DEPRECATION_CONTEXT.search(line):
+                    continue
+                for dead, live in DEPRECATED_MODELS.items():
+                    # Word-boundary right side so gemini-2.0-flash does not
+                    # match inside gemini-2.0-flash-exp, which has its own entry.
+                    if re.search(rf"(?<![\w.-]){re.escape(dead)}(?![\w.-])", line):
+                        report.error(
+                            f"{path.relative_to(repo)}:{num}",
+                            f"Retired model ID {dead!r} — use {live!r} "
+                            "(or mention the shutdown explicitly on this line)",
+                        )
+    return
+
+
+def check_frontmatter_keys(skill_file: Path, repo: Path, frontmatter: dict, report: Report) -> None:
+    """Warn on keys the harness ignores but an author may believe are load-bearing."""
+    for key, why in DISCOURAGED_KEYS.items():
+        if key in frontmatter:
+            report.warn(skill_file.relative_to(repo), f"Frontmatter key `{key}`: {why}")
+
+
 def check_plugin_manifests(repo: Path, report: Report) -> None:
     """Plugin bundles must use the manifest directory matching their tree."""
     for tree in TREES:
@@ -345,6 +418,7 @@ def main() -> int:
     check_symlinks(repo, report)
     check_artifacts(repo, report)
     check_plugin_manifests(repo, report)
+    check_deprecated_models(repo, report)
     if "gemini" in trees:
         check_gemini_purity(repo, report)
 
