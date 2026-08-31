@@ -1,19 +1,33 @@
 ---
 name: git-worktrees
-description: "Manage git worktree lifecycle with paired tmx2 sessions. Use when creating, listing, cleaning up, or merging worktree branches. Covers: (1) Creating a worktree with a paired tmx2 session, (2) Listing worktrees and their session status, (3) Cleaning up stale worktrees (removing dirs, pruning, killing sessions, deleting branches), (4) Merging worktree branches back to main with conflict resolution, (5) Resetting worktree branches to main after merge. Triggers on: 'create a worktree', 'git worktree', 'clean up worktrees', 'merge worktree branches', 'tmx2 session for worktree', 'spawn worktree sessions'."
+description: "Use when starting feature work that needs isolation from the current workspace, before executing an implementation plan, or when creating, listing, merging, or cleaning up git worktrees. Covers directory selection and gitignore safety, worktree creation with project setup and a clean test baseline, merging branches back to main with conflict resolution, and teardown of stale worktrees and branches. Triggers on: 'create a worktree', 'git worktree', 'isolated workspace', 'clean up worktrees', 'merge worktree branches'."
 ---
 
-# Git Worktrees with tmx2 Sessions
+# Git Worktrees
 
-Manage parallel development via git worktrees paired with tmx2 sessions.
+Worktrees create isolated workspaces that share one repository, so you can work on several branches
+at once without switching. This skill covers the full lifecycle: choose a location → create → set up
+and verify → merge back → tear down.
 
-## Conventions
+**Core principle:** systematic directory selection + safety verification = reliable isolation.
 
-- **Branch prefix:** `wt/<name>` (e.g., `wt/frontend`, `wt/agent-backend`)
-- **Session prefix:** `ge_<name>` (e.g., `ge_frontend`, `ge_agent_backend`)
-- **Worktree base:** Sibling directory `../<repo>_worktrees/` auto-detected from repo root. For a repo at `/home/user/my_project`, worktrees go in `/home/user/my_project_worktrees/`.
+## 1. Choose the worktree directory
 
-Detect paths:
+Follow this priority order. Do not assume a location.
+
+```bash
+ls -d .worktrees 2>/dev/null     # preferred (hidden, project-local)
+ls -d worktrees 2>/dev/null      # alternative
+```
+
+1. **An existing directory wins.** If both exist, use `.worktrees/`.
+2. **Otherwise check the project's agent instructions:**
+   `grep -i "worktree.*director" CLAUDE.md 2>/dev/null` — if a preference is stated, use it without asking.
+3. **Otherwise ask**, offering both conventions:
+   - `.worktrees/` — project-local and hidden
+   - a sibling `../<repo>_worktrees/` — keeps the repo directory clean
+
+Resolve the sibling path with:
 
 ```bash
 REPO_ROOT="$(git rev-parse --show-toplevel)"
@@ -21,85 +35,120 @@ REPO_NAME="$(basename "$REPO_ROOT")"
 WT_BASE="$(dirname "$REPO_ROOT")/${REPO_NAME}_worktrees"
 ```
 
-## Create Worktree + Session
+## 2. Verify safety before creating
+
+For a **project-local** directory (`.worktrees/` or `worktrees/`), confirm it is ignored first:
 
 ```bash
-# New branch from main
-git worktree add "${WT_BASE}/<name>" -b "wt/<name>" main
-
-# Or existing branch
-git worktree add "${WT_BASE}/<name>" "wt/<name>"
-
-# Pair with tmx2 session
-tmx2 new-session -d -s "ge_<name>" -c "${WT_BASE}/<name>"
+git check-ignore -q .worktrees 2>/dev/null || git check-ignore -q worktrees 2>/dev/null
 ```
 
-Report: `Worktree ready. Attach: tmx2 attach -t ge_<name>`
+**If it is not ignored:** add it to `.gitignore` and commit that change before proceeding.
+Otherwise worktree contents get tracked and pollute `git status`.
 
-## List Status
+A sibling directory outside the repo needs no such check.
+
+## 3. Create the worktree
 
 ```bash
-git worktree list          # all worktrees
-tmx2 ls                    # all tmx2 sessions
+# New branch
+git worktree add "<path>/<name>" -b "<branch>" main
+
+# Existing branch
+git worktree add "<path>/<name>" "<branch>"
 ```
 
-Cross-reference to identify orphaned sessions (session exists, worktree gone) or unpaired worktrees (worktree exists, no session).
+A `wt/<name>` branch prefix keeps worktree branches easy to spot, though any convention works as
+long as the project is consistent.
 
-## Cleanup
+## 4. Set up and verify a clean baseline
 
-Use `scripts/wt_cleanup.sh` for reliable cleanup. The sequence is error-prone when done manually (stale dirs, leftover metadata, force-remove needed for untracked files).
+Auto-detect the project type rather than hardcoding commands:
 
 ```bash
-# Keep branch (for re-creation later)
-bash scripts/wt_cleanup.sh <name>
-
-# Delete branch too (after merge)
-bash scripts/wt_cleanup.sh <name> --delete-branch
+[ -f package.json ]     && npm install
+[ -f Cargo.toml ]       && cargo build
+[ -f pyproject.toml ]   && uv sync
+[ -f requirements.txt ] && pip install -r requirements.txt
+[ -f go.mod ]           && go mod download
 ```
 
-Manual sequence if script unavailable:
+Then run the project's test command. **If tests fail, report the failures and ask** whether to
+proceed — a dirty baseline makes new bugs indistinguishable from pre-existing ones. If they pass,
+report the path, the test count, and that the worktree is ready.
 
-1. `tmx2 kill-session -t ge_<name>`
-2. `git worktree remove --force "${WT_BASE}/<name>"` (force needed if untracked files)
-3. `rm -rf "${WT_BASE}/<name>"` (if stale dir remains)
-4. `git worktree prune`
-5. `git branch -D wt/<name>` (optional, only if merged)
-
-## Merge Worktree Branch to Main
+## 5. Merge back to main
 
 ```bash
-# From main branch
 git checkout main
-git merge wt/<name> --no-edit
+git merge <branch> --no-edit
 ```
 
-**If conflicts:** Resolve by reading both sides, keeping all non-overlapping changes. For `docs/` files where branches touch different sections, combine both sides in the conflict markers.
+**On conflicts:** read both sides and keep all non-overlapping changes. Where two branches touched
+different sections of the same document, combine both sides rather than picking one.
 
-**After merge:** Either clean up with `--delete-branch`, or reset the worktree to continue fresh work:
+**After merging**, either tear down (below) or reset the worktree to keep working in it:
 
 ```bash
-git -C "${WT_BASE}/<name>" reset --hard main
+git -C "<path>/<name>" reset --hard main
 ```
 
-## Batch Operations
-
-Generate a spawn script for multiple worktrees:
+## 6. List and tear down
 
 ```bash
-#!/usr/bin/env bash
-SESSIONS=("ge_main:${REPO_ROOT}" "ge_frontend:${WT_BASE}/frontend" ...)
-for entry in "${SESSIONS[@]}"; do
-  name="${entry%%:*}"; dir="${entry#*:}"
-  tmx2 has-session -t "$name" 2>/dev/null && continue
-  tmx2 new-session -d -s "$name" -c "$dir"
-done
+git worktree list
 ```
 
-## Common Pitfalls
+Use `scripts/wt_cleanup.sh` — the manual sequence is error-prone (stale directories, leftover
+metadata, force-removal needed for untracked files):
+
+```bash
+bash scripts/wt_cleanup.sh <name>                   # keep the branch
+bash scripts/wt_cleanup.sh <name> --delete-branch   # after a merge
+```
+
+Manual equivalent:
+
+1. `git worktree remove --force "<path>/<name>"` — force is needed if untracked files exist
+2. `rm -rf "<path>/<name>"` if a stale directory remains
+3. `git worktree prune`
+4. `git branch -D <branch>` — only if merged
+
+## Optional: paired terminal sessions
+
+If your setup uses a terminal multiplexer, pairing each worktree with a session keeps parallel work
+navigable. With `tmx2` and a `ge_<name>` session prefix:
+
+```bash
+tmx2 new-session -d -s "ge_<name>" -c "<path>/<name>"   # create, alongside step 3
+tmx2 ls                                                  # list sessions
+tmx2 kill-session -t "ge_<name>"                        # kill, before step 6
+```
+
+Cross-reference `git worktree list` against `tmx2 ls` to spot orphaned sessions (session alive,
+worktree gone) and unpaired worktrees. Adapt to `tmux`/`screen` as needed — this section is a
+convenience, not part of the core lifecycle.
+
+## Common pitfalls
 
 | Problem | Cause | Fix |
-|---------|-------|-----|
-| `already exists` on worktree add | Stale dir from previous removal | `rm -rf` the dir, `git worktree prune`, retry |
-| `branch already exists` on `-b` | Branch survived cleanup | `git branch -D wt/<name>`, retry |
+|---|---|---|
+| `already exists` on worktree add | Stale directory from a previous removal | `rm -rf` the directory, `git worktree prune`, retry |
+| `branch already exists` on `-b` | Branch survived cleanup | `git branch -D <branch>`, retry |
 | `contains modified or untracked files` | Normal — worktrees accumulate artifacts | Use `--force` on `git worktree remove` |
-| tmx2 session missing after worktree remove | Removing the dir kills the session's cwd | Recreate: `tmx2 new-session -d -s ge_<name> -c <dir>` |
+| Worktree contents show in `git status` | Directory was never gitignored | Add to `.gitignore` and commit; see step 2 |
+| Can't tell new bugs from old | Skipped the baseline test run | Always verify a clean baseline in step 4 |
+| Session dies after worktree removal | Removing the directory kills the session's cwd | Recreate the session, or kill it first |
+
+## Red flags
+
+**Never** create a project-local worktree without verifying it is ignored, skip the baseline test
+run, proceed past failing tests without asking, or assume a directory location when it is ambiguous.
+
+## Integration
+
+| Skill | Relationship |
+|---|---|
+| `executing-plans`, `subagent-driven-development` | The work that happens inside the worktree |
+| `finishing-a-development-branch` | Completes the work before teardown |
+| `writing-plans` | Produces the plan the worktree isolates work for |

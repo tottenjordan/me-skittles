@@ -27,6 +27,29 @@ pip install google-adk
 pip install google-adk[a2a]
 ```
 
+## ADK 2.x
+
+ADK 2.0 added the **Workflow Runtime**, moving execution from a hierarchical agent executor to a
+graph engine where agents, tools, and functions are nodes. `google.adk.Workflow` is a graph-based
+node wired with explicit `edges`.
+
+**Everything in this skill still works on 2.x** — `Agent`, `LlmAgent`, `SequentialAgent`,
+`ParallelAgent`, `LoopAgent`, `Runner`, `ToolContext`, and `InMemorySessionService` were all
+verified importable against `google-adk==2.8.0`. The graph runtime is an addition, not a
+replacement.
+
+Breaking changes that matter if you are upgrading from 1.x:
+
+| Change | What to do |
+|---|---|
+| `Event` gained `node_info` and `output` | A custom `BaseSessionService` backed by rigid SQL columns needs a schema update |
+| Tools that swallow exceptions | Let exceptions propagate — a broad `except Exception:` disables automatic retries, and catching `BaseException` traps `NodeInterruptedError` and breaks human-in-the-loop pauses |
+| Manual `session.events.append(...)` | `yield` the event from your node or agent instead; the runner needs control of emission for routing and streaming |
+| Custom `run()` overrides | Move the logic into `BeforeAgentCallback` / `AfterAgentCallback` |
+| Session compatibility | 2.0 sessions are readable by 1.28+, but not by older 1.x |
+
+Full migration guide: [adk.dev/2.0](https://adk.dev/2.0/)
+
 ## Project Structure
 
 ```
@@ -72,7 +95,7 @@ def calculate(expression: str) -> dict:
 
 root_agent = Agent(
     name="assistant_agent",
-    model="gemini-2.0-flash",
+    model="gemini-flash-latest",
     description="A helpful assistant that can check weather and do math.",
     instruction="""You are a helpful assistant.
     Use get_weather when asked about weather.
@@ -87,7 +110,7 @@ root_agent = Agent(
 | Parameter       | Required | Description                          |
 | --------------- | -------- | ------------------------------------ |
 | `name`          | Yes      | Unique identifier                    |
-| `model`         | Yes      | LLM model (e.g., `gemini-2.0-flash`) |
+| `model`         | Yes      | LLM model (e.g., `gemini-flash-latest`) |
 | `instruction`   | Yes      | Agent behavior and personality       |
 | `description`   | No       | Summary of capabilities              |
 | `tools`         | No       | List of functions/tools              |
@@ -103,13 +126,18 @@ Use variables in instructions:
 ```python
 root_agent = Agent(
     name="greeter",
-    model="gemini-2.0-flash",
+    model="gemini-flash-latest",
     instruction="Greet the user. Their name is {user_name}.",
     tools=[]
 )
 ```
 
 Variables are resolved from session state at runtime.
+
+> **Pin the model on regional endpoints.** `gemini-flash-latest` resolves fine for local
+> development, but ADK's docs note the `-latest` aliases may not resolve when
+> `GOOGLE_CLOUD_LOCATION` is a region such as `us-central1`. Use an explicit version there —
+> the `agent-engine` skill pins `gemini-3.7-flash` for this reason.
 
 ## Function Tools
 
@@ -210,14 +238,14 @@ retry_agent = LoopAgent(
 ```python
 specialist_agent = Agent(
     name="specialist",
-    model="gemini-2.0-flash",
+    model="gemini-flash-latest",
     instruction="You are a specialist.",
     tools=[specialist_tool]
 )
 
 manager_agent = Agent(
     name="manager",
-    model="gemini-2.0-flash",
+    model="gemini-flash-latest",
     instruction="Delegate specialist tasks to the specialist agent.",
     tools=[transfer_tool],
     sub_agents=[specialist_agent]
@@ -307,7 +335,7 @@ class WeatherReport(BaseModel):
 
 root_agent = Agent(
     name="weather_agent",
-    model="gemini-2.0-flash",
+    model="gemini-flash-latest",
     instruction="Provide weather information as structured data.",
     output_schema=WeatherReport
 )
@@ -325,6 +353,13 @@ For detailed information on advanced ADK patterns, agent composition strategies,
 - Security patterns and guardrails
 - Evaluation and testing strategies
 - Complete multi-tier examples
+
+**[references/state_management.md](references/state_management.md)** - Session and state handling:
+
+- `session.state` scopes (`user:`, `app:`, `temp:`) and when each persists
+- `output_key` vs explicit state writes
+- State propagation across sub-agents and workflow agents
+- Known Agent Engine limitations and workarounds
 
 ## Environment Configuration
 
@@ -369,7 +404,7 @@ def safe_operation(data: str) -> dict:
 ```python
 root_agent = Agent(
     name="context_aware",
-    model="gemini-2.0-flash",
+    model="gemini-flash-latest",
     instruction="""You are a helpful assistant.
 
     Context:
@@ -488,7 +523,7 @@ To generate memories after a session, call `memory_service.add_session_to_memory
 ## ADK Evaluations
 
 For evaluation methodology, metrics, evalset schema, and running `adk eval`, see the
-[ADK evaluation docs](https://google.github.io/adk-docs/evaluate/).
+[ADK evaluation docs](https://adk.dev/evaluate/).
 
 ## Troubleshooting
 

@@ -47,10 +47,11 @@ The `description` field controls when the skill is auto-triggered. Write it as t
 | Category | Skills |
 |----------|--------|
 | ADK/Agents | `adk`, `a2a`, `agent-engine`, `agent-development` |
-| Development workflow | `writing-skills`, `writing-plans`, `executing-plans`, `subagent-driven-development`, `ralph-wiggum` |
-| Testing | `testing-anti-patterns`, `testing-skills-with-subagents`, `condition-based-waiting`, `property-based-testing`, `testing-handbook-skills` |
-| Tools/Automation | `browser-use`, `playwright-skill`, `git-worktrees`, `using-git-worktrees`, `inspect-vai-pipes` |
-| Diagrams/Frontend | `generate-diagram`, `evaluate-diagram`, `gcp-diagram`, `paperbanana`, `frontend-design` |
+| Development workflow | `writing-skills`, `writing-plans`, `executing-plans`, `subagent-driven-development`, `requesting-code-review`, `receiving-code-review`, `finishing-a-development-branch`, `ralph-wiggum`, `modern-python` (Claude) |
+| Testing | `test-driven-development`, `testing-anti-patterns`, `testing-skills-with-subagents`, `condition-based-waiting`, `property-based-testing`, `testing-handbook-skills` |
+| Tools/Automation | `browser-use`, `playwright-skill`, `git-worktrees`, `inspect-vai-pipes` |
+| Diagrams/Frontend | `paperbanana`, `gcp-diagram`, `frontend-design` |
+| Google Cloud/Data (Gemini only) | 29 Google-published skills: `bigquery-*`, `gcp-*`, `dbt-bigquery`, `dataform-bigquery`, `notebook-guidance`, … — routed from `gcp-data-pipelines` |
 | Other | `claude-md-improver` (Claude), `gemini-md-improver` (Gemini), `gemini-enterprise`, `insights-report` |
 
 ### Multi-skill Bundles
@@ -67,6 +68,8 @@ The `description` field controls when the skill is auto-triggered. Write it as t
 - No dangling symlinks or committed build artifacts
 - No Claude terminology under `gemini/` — that tree is a port, not a copy
 - Plugin bundles using the manifest directory for their tree
+- No retired model IDs (see `DEPRECATED_MODELS`) outside deprecation notes
+- No frontmatter keys the harness ignores, e.g. `when_to_use` — triggers must live in `description`
 
 Run it before committing any skill change. It is the guard against re-syncing
 upstream content that reintroduces fixed defects — run `--tree gemini` after

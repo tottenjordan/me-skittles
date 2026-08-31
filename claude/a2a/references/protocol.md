@@ -196,7 +196,7 @@ from google.adk.agents.llm_agent import Agent
 
 # Create your agent
 root_agent = Agent(
-    model="gemini-2.0-flash-exp",
+    model="gemini-flash-latest",
     name="My Agent",
     description="What my agent does",
     tools=[...],
@@ -383,7 +383,7 @@ import threading
 
 # Leaf agent with tools
 leaf_agent = Agent(
-    model="gemini-2.0-flash-exp",
+    model="gemini-flash-latest",
     name="PTO Agent",
     description="Manages PTO requests and balances",
     tools=[get_pto_balance, request_pto],
@@ -399,7 +399,7 @@ remote_pto_agent = RemoteA2aAgent(
 )
 
 hr_agent = Agent(
-    model="gemini-2.0-flash-exp",
+    model="gemini-flash-latest",
     name="HR Agent",
     description="Handles HR queries",
     tools=[TransferToAgentTool(remote_agent=remote_pto_agent)],
@@ -473,8 +473,8 @@ asyncio.run(test_agent())
 ## Additional Resources
 
 - [Google Cloud Agent Engine A2A Documentation](https://docs.cloud.google.com/agent-builder/agent-engine/develop/a2a)
-- [ADK A2A Quickstart](https://google.github.io/adk-docs/a2a/quickstart-exposing/)
-- [Agent Development Kit (ADK) Documentation](https://google.github.io/adk-docs/)
+- [ADK A2A Quickstart](https://adk.dev/a2a/quickstart-exposing/)
+- [Agent Development Kit (ADK) Documentation](https://adk.dev/)
 - [A2A SDK Documentation](https://pypi.org/project/a2a-sdk/)
 
 ## Summary

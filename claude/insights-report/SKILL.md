@@ -47,7 +47,7 @@ Key variables used throughout this workflow:
 | 3. Extract metrics | Scores, phases, tools, data sources | Python script (inline) |
 | 4. Read prior reports | Comparison metrics from existing reports | Read tool on `docs/insights_reports/` |
 | 5. Generate architecture diagram | GCP-styled 5-tier pipeline | `gcp-diagram` skill |
-| 6. Generate data diagrams (4x) | Score trajectory, cross-run, container, feature | `generate-diagram` skill (PaperBanana) |
+| 6. Generate data diagrams (4x) | Score trajectory, cross-run, container, feature | `paperbanana` skill |
 | 7. Write report | Markdown with embedded images | Write tool |
 
 ## Step 1: Pipeline Metadata
@@ -160,33 +160,33 @@ Save output to `docs/images/{prefix}_architecture.png`. Run the icon overlay scr
 
 ## Step 6: Generate Data Diagrams (PaperBanana)
 
-For each data diagram, write a text description file to `/tmp/` then use the `generate-diagram` skill.
+For each data diagram, write a text description file to `/tmp/` then use the `paperbanana` skill.
 
 ### Required Diagrams (5)
 
 **1. Score Trajectory** — Multi-line chart: per-container + aggregate (dashed) mean(NF) over epochs, with early/mid/late shaded bands and 3-epoch smoothing
 ```
-/generate-diagram /tmp/{prefix}_score_trajectory.txt "Score trajectory over {N} epochs"
+mcp__paperbanana__generate_diagram(source_context=<contents of /tmp/{prefix}_score_trajectory.txt>, caption="Score trajectory over {N} epochs")
 ```
 
 **2. Cross-Run Comparison** — Dual-panel grouped bar chart: left panel (Mean(NF) + Trajectory%), right panel (Persist% + Floor%) across all runs
 ```
-/generate-diagram /tmp/{prefix}_cross_run.txt "Cross-run performance comparison"
+mcp__paperbanana__generate_diagram(source_context=<contents of /tmp/{prefix}_cross_run.txt>, caption="Cross-run performance comparison")
 ```
 
 **3. Container Performance** — Horizontal grouped bars (scored/persisted/floors) per table, sorted by Mean(NF), with trajectory annotations
 ```
-/generate-diagram /tmp/{prefix}_containers.txt "Per-container performance breakdown"
+mcp__paperbanana__generate_diagram(source_context=<contents of /tmp/{prefix}_containers.txt>, caption="Per-container performance breakdown")
 ```
 
 **4. Container Trajectories** — Grouped bars showing Early/Mid/Late mean scores per container + aggregate, with trajectory % annotated above each group
 ```
-/generate-diagram /tmp/{prefix}_container_trajectories.txt "Per-container learning curves"
+mcp__paperbanana__generate_diagram(source_context=<contents of /tmp/{prefix}_container_trajectories.txt>, caption="Per-container learning curves")
 ```
 
 **5. Feature Assessment** (if new features tested) — Status cards for new features
 ```
-/generate-diagram /tmp/{prefix}_features.txt "New feature assessment dashboard"
+mcp__paperbanana__generate_diagram(source_context=<contents of /tmp/{prefix}_features.txt>, caption="New feature assessment dashboard")
 ```
 
 ### Diagram Text File Format
@@ -239,7 +239,7 @@ Examples:
 
 | Mistake | Fix |
 |---------|-----|
-| Using raw Gemini API for diagrams | Use `generate-diagram` (PaperBanana) and `gcp-diagram` skills |
+| Using raw Gemini API for diagrams | Use the `paperbanana` and `gcp-diagram` skills |
 | Computing epoch as `index / 10` | Use the actual `epoch` field from log entries |
 | Missing per-container trajectory | Always include early/mid/late breakdown per table |
 | Comparing without controlling for config | Note which params differ in comparison tables |

@@ -46,7 +46,7 @@ def get_data(user_id: str) -> dict:
 
 root_agent = Agent(
     name="data_agent",
-    model="gemini-2.0-flash",
+    model="gemini-3.7-flash",
     instruction="You are the Data Agent. Use `get_data` when asked for user data.",
     tools=[get_data]
 )
@@ -107,7 +107,7 @@ transfer_tool = TransferToAgentTool(agent_names=["leaf_helper"])
 
 root_agent = Agent(
     name="functional_agent",
-    model="gemini-2.0-flash",
+    model="gemini-3.7-flash",
     instruction="""You are the Functional Agent.
     Delegate data requests to the leaf_helper.
     Always transfer when asked about data.""",
@@ -130,7 +130,7 @@ transfer_tool = TransferToAgentTool(agent_names=["hr_helper", "finance_helper"])
 
 root_agent = Agent(
     name="orchestrator_agent",
-    model="gemini-2.0-flash",
+    model="gemini-3.7-flash",
     instruction="""You are the Orchestrator.
     - For HR/PTO questions, transfer to `hr_helper`.
     - For Finance/Report questions, transfer to `finance_helper`.
@@ -243,7 +243,7 @@ def deploy_agent(
         "google-adk[a2a]",
         "uvicorn",
         "fastapi",
-        "a2a-sdk>=0.3.5"
+        "a2a-sdk>=1.1"
     ]
 
     aiplatform.init(project=project_id, location=location, staging_bucket=staging_bucket)
@@ -333,7 +333,7 @@ google-adk[a2a]
 google-cloud-aiplatform[agent_engines,a2a]
 uvicorn
 fastapi
-a2a-sdk>=0.3.5
+a2a-sdk>=1.1
 ```
 
 ## Practical Lessons from Production

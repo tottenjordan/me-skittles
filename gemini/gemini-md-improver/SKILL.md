@@ -1,7 +1,7 @@
 ---
 name: gemini-md-improver
 description: Audit and improve GEMINI.md files in repositories. Use when user asks to check, audit, update, improve, or fix GEMINI.md files. Scans for all GEMINI.md files, evaluates quality against templates, outputs quality report, then makes targeted updates. Also use when the user mentions "GEMINI.md maintenance" or "project memory optimization".
-tools: Read, Glob, Grep, Bash, Edit
+allowed-tools: Read, Glob, Grep, Bash, Edit
 ---
 
 # GEMINI.md Improver
@@ -140,6 +140,8 @@ After user approval, apply changes using the Edit tool. Preserve existing conten
 ## Templates
 
 See [references/templates.md](references/templates.md) for GEMINI.md templates by project type.
+
+See [references/update-guidelines.md](references/update-guidelines.md) for how to make targeted edits to an existing GEMINI.md without churning it.
 
 ## Common Issues to Flag
 

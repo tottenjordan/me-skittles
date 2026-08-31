@@ -1,7 +1,7 @@
 ---
 name: claude-md-improver
 description: Audit and improve CLAUDE.md files in repositories. Use when user asks to check, audit, update, improve, or fix CLAUDE.md files. Scans for all CLAUDE.md files, evaluates quality against templates, outputs quality report, then makes targeted updates. Also use when the user mentions "CLAUDE.md maintenance" or "project memory optimization".
-tools: Read, Glob, Grep, Bash, Edit
+allowed-tools: Read, Glob, Grep, Bash, Edit
 ---
 
 # CLAUDE.md Improver
@@ -140,6 +140,8 @@ After user approval, apply changes using the Edit tool. Preserve existing conten
 ## Templates
 
 See [references/templates.md](references/templates.md) for CLAUDE.md templates by project type.
+
+See [references/update-guidelines.md](references/update-guidelines.md) for how to make targeted edits to an existing CLAUDE.md without churning it.
 
 ## Common Issues to Flag
 

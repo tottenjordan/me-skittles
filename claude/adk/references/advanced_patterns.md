@@ -92,7 +92,7 @@ from google.adk.agents.llm_agent import Agent
 
 agent = Agent(
     name="assistant_agent",                    # Required: Unique identifier
-    model="gemini-2.0-flash",                  # Required: Model specification
+    model="gemini-flash-latest",                  # Required: Model specification
     description="A helpful assistant",         # Optional but recommended
     instruction="You are a helpful assistant", # Agent persona and behavior
     tools=[tool_func_1, tool_func_2],         # Functions/tools agent can use
@@ -778,7 +778,7 @@ class WeatherOutput(BaseModel):
 
 weather_agent = Agent(
     name="weather",
-    model="gemini-2.0-flash",
+    model="gemini-flash-latest",
     input_schema=CityWeatherInput,   # Validates input
     output_schema=WeatherOutput,      # Enforces output structure
     tools=[get_weather],
@@ -792,13 +792,13 @@ weather_agent = Agent(
 
 ```python
 # Direct model string (Google Cloud integrated)
-agent = Agent(model="gemini-2.0-flash", ...)
+agent = Agent(model="gemini-flash-latest", ...)
 
 # Vertex AI model
 agent = Agent(model="gemini-2.5-flash", ...)
 
 # Claude via Anthropic
-agent = Agent(model="claude-sonnet-4-5", ...)
+agent = Agent(model="claude-sonnet-5", ...)
 ```
 
 #### Model Connectors for External Providers
@@ -816,7 +816,7 @@ agent = Agent(model=apigee_model, ...)
 
 # LiteLLM connector (supports many providers)
 lite_model = LiteLlm(
-    model="gpt-4",
+    model="gpt-5.6",
     # ... configuration
 )
 agent = Agent(model=lite_model, ...)
@@ -829,7 +829,7 @@ from google.genai.types import GenerateContentConfig
 
 agent = Agent(
     name="creative_agent",
-    model="gemini-2.0-flash",
+    model="gemini-flash-latest",
     generate_content_config=GenerateContentConfig(
         temperature=0.9,           # Higher = more creative
         top_p=0.95,               # Nucleus sampling
@@ -1381,7 +1381,7 @@ from google.genai.types import HarmCategory, HarmBlockThreshold
 
 agent = Agent(
     name="safe_agent",
-    model="gemini-2.0-flash",
+    model="gemini-flash-latest",
     generate_content_config=GenerateContentConfig(
         safety_settings={
             HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
@@ -1605,7 +1605,7 @@ def get_pto_balance(user_id: str) -> dict:
 
 pto_agent = Agent(
     name="pto_agent",
-    model="gemini-2.0-flash",
+    model="gemini-flash-latest",
     description="Provides PTO balance information",
     instruction="Use get_pto_balance to check user PTO",
     tools=[get_pto_balance]
@@ -1627,7 +1627,7 @@ def get_quarterly_report(quarter: str, year: int) -> dict:
 
 quarterly_agent = Agent(
     name="quarterly_agent",
-    model="gemini-2.0-flash",
+    model="gemini-flash-latest",
     description="Provides quarterly financial reports",
     instruction="Use get_quarterly_report for financial data",
     tools=[get_quarterly_report]
@@ -1663,7 +1663,7 @@ def transfer_to_hr_agent(agent: HRSubAgent) -> dict:
 
 hr_agent = Agent(
     name="hr_agent",
-    model="gemini-2.0-flash",
+    model="gemini-flash-latest",
     description="HR functions including PTO",
     instruction="Handle HR queries. Use pto_helper for PTO questions.",
     tools=[transfer_to_hr_agent],
@@ -1688,7 +1688,7 @@ def transfer_to_finance_agent(agent: FinanceSubAgent) -> dict:
 
 finance_agent = Agent(
     name="finance_agent",
-    model="gemini-2.0-flash",
+    model="gemini-flash-latest",
     description="Financial information and reports",
     instruction="Handle finance queries. Use quarterly_helper for reports.",
     tools=[transfer_to_finance_agent],
@@ -1725,7 +1725,7 @@ def transfer_to_agent(agent: OrchestratorAgent) -> dict:
 
 orchestrator = Agent(
     name="orchestrator_agent",
-    model="gemini-2.0-flash",
+    model="gemini-flash-latest",
     description="Enterprise assistant routing to HR and Finance",
     instruction="""Route user requests to appropriate department:
     - HR questions (PTO, benefits) -> hr_helper
@@ -1814,7 +1814,7 @@ class CodeOutput(BaseModel):
 # Stage 1: Code generation
 code_writer = Agent(
     name="code_writer",
-    model="gemini-2.0-flash",
+    model="gemini-flash-latest",
     instruction="Generate Python code based on the request",
     output_key="generated_code",
     output_schema=CodeOutput
@@ -1823,7 +1823,7 @@ code_writer = Agent(
 # Stage 2: Code review
 code_reviewer = Agent(
     name="code_reviewer",
-    model="gemini-2.0-flash",
+    model="gemini-flash-latest",
     instruction="""Review this code: {generated_code}
     Provide feedback on quality, style, and potential issues.""",
     output_key="review_feedback"
@@ -1832,7 +1832,7 @@ code_reviewer = Agent(
 # Stage 3: Code improvement
 code_refactorer = Agent(
     name="code_refactorer",
-    model="gemini-2.0-flash",
+    model="gemini-flash-latest",
     instruction="""Improve this code: {generated_code}
     Based on this feedback: {review_feedback}""",
     output_schema=CodeOutput
@@ -1864,21 +1864,21 @@ from google.adk.agents.parallel_agent import ParallelAgent
 # Create specialized data collectors
 db_agent = Agent(
     name="database_collector",
-    model="gemini-2.0-flash",
+    model="gemini-flash-latest",
     tools=[query_database],
     output_key="db_results"
 )
 
 api_agent = Agent(
     name="api_collector",
-    model="gemini-2.0-flash",
+    model="gemini-flash-latest",
     tools=[call_external_api],
     output_key="api_results"
 )
 
 file_agent = Agent(
     name="file_collector",
-    model="gemini-2.0-flash",
+    model="gemini-flash-latest",
     tools=[read_file_data],
     output_key="file_results"
 )
@@ -1892,7 +1892,7 @@ parallel_collector = ParallelAgent(
 # Aggregator
 aggregator = Agent(
     name="data_aggregator",
-    model="gemini-2.0-flash",
+    model="gemini-flash-latest",
     instruction="""Combine and analyze these data sources:
     - Database: {db_results}
     - API: {api_results}
@@ -1921,19 +1921,19 @@ class AdaptiveQualityAgent(BaseAgent):
         super().__init__(**kwargs)
         self.generator = Agent(
             name="content_generator",
-            model="gemini-2.0-flash",
+            model="gemini-flash-latest",
             instruction="Generate content based on: {topic}",
             output_key="content"
         )
         self.critic = Agent(
             name="content_critic",
-            model="gemini-2.0-flash",
+            model="gemini-flash-latest",
             instruction="Rate this content 1-10: {content}",
             output_key="quality_score"
         )
         self.improver = Agent(
             name="content_improver",
-            model="gemini-2.0-flash",
+            model="gemini-flash-latest",
             instruction="Improve: {content}. Issues: {feedback}",
             output_key="content"
         )
@@ -2039,9 +2039,9 @@ adaptive_agent = AdaptiveQualityAgent(
 ## Additional Resources
 
 ### Official Documentation
-- Main Documentation: https://google.github.io/adk-docs/
-- Python Getting Started: https://google.github.io/adk-docs/get-started/python/
-- API Reference: https://google.github.io/adk-docs/api-reference/python/
+- Main Documentation: https://adk.dev/
+- Python Getting Started: https://adk.dev/get-started/python/
+- API Reference: https://adk.dev/api-reference/python/
 
 ### Key Concepts
 - LLM Agents: Non-deterministic, reasoning-based agents

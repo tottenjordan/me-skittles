@@ -135,11 +135,11 @@ Skills act as additions to models, so effectiveness depends on the underlying mo
 
 **Testing considerations by model**:
 
-* **Gemini gemini-1.5-flash** (fast, economical): Does the Skill provide enough guidance?
-* **Gemini gemini-3-flash-preview** (balanced): Is the Skill clear and efficient?
-* **Gemini gemini-1.5-pro** (powerful reasoning): Does the Skill avoid over-explaining?
+* **Gemini Flash-Lite** (fast, economical): Does the Skill provide enough guidance?
+* **Gemini Flash** (balanced): Is the Skill clear and efficient?
+* **Gemini Pro** (powerful reasoning): Does the Skill avoid over-explaining?
 
-What works perfectly for gemini-1.5-pro might need more detail for gemini-1.5-flash. If you plan to use your Skill across multiple models, aim for instructions that work well with all of them.
+What works perfectly for Gemini Pro might need more detail for Flash-Lite. If you plan to use your Skill across multiple models, aim for instructions that work well with all of them.
 
 ## Skill structure
 
@@ -1129,7 +1129,7 @@ Before sharing a Skill, verify:
 ### Testing
 
 * [ ] At least three evaluations created
-* [ ] Tested with gemini-1.5-flash, gemini-3-flash-preview, and gemini-1.5-pro
+* [ ] Tested across the Flash-Lite, Flash, and Pro tiers
 * [ ] Tested with real usage scenarios
 * [ ] Team feedback incorporated (if applicable)
 

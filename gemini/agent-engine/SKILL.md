@@ -7,6 +7,12 @@ description: Deploy and manage AI agents on Vertex AI Agent Engine. Use when dep
 
 Deploy, manage, and scale AI agents in production on Google Cloud.
 
+
+> **Model IDs on regional endpoints.** These samples pin `gemini-3.7-flash` rather than using the
+> `gemini-flash-latest` alias. Agent Engine deploys to a region (`us-central1` above), and ADK's
+> docs note the `-latest` aliases may not resolve on regional endpoints — pin an explicit version
+> here. The alias is fine in the `adk` skill's local-development examples.
+
 ## Quick Reference
 
 | Task | Pattern |
@@ -31,7 +37,7 @@ gcloud services enable aiplatform.googleapis.com storage.googleapis.com
 ## Installation
 
 ```bash
-pip install --upgrade google-cloud-aiplatform[agent_engines,adk]>=1.112
+pip install --upgrade google-cloud-aiplatform[agent_engines,adk]>=2.0
 
 # For A2A support
 pip install google-cloud-aiplatform[agent_engines,a2a]
@@ -68,7 +74,7 @@ def get_data(query: str) -> dict:
     return {"status": "success", "data": "..."}
 
 agent = Agent(
-    model="gemini-2.0-flash",
+    model="gemini-3.7-flash",
     name="data_agent",
     instruction="You help users find data.",
     tools=[get_data]
@@ -220,7 +226,7 @@ def get_pto_balance(user_id: str) -> dict:
 
 pto_agent = Agent(
     name="pto_agent",
-    model="gemini-2.0-flash",
+    model="gemini-3.7-flash",
     instruction="You check PTO balances. Use get_pto_balance when asked.",
     tools=[get_pto_balance]
 )
@@ -238,7 +244,7 @@ pto_remote = client.agent_engines.create(
         "requirements": [
             "google-cloud-aiplatform[agent_engines,a2a]",
             "google-adk[a2a]",
-            "a2a-sdk>=0.3.5"
+            "a2a-sdk>=1.1"
         ],
         "extra_packages": ["./agent_system", a2a_path],
         "staging_bucket": "gs://your-bucket"
@@ -396,7 +402,7 @@ def deploy_agent(agent, name, env_vars=None, extra_packages=None):
         "google-adk[a2a]",
         "uvicorn",
         "fastapi",
-        "a2a-sdk>=0.3.5"
+        "a2a-sdk>=1.1"
     ]
 
     app = AdkApp(
@@ -430,11 +436,11 @@ if __name__ == "__main__":
 ## Dependencies
 
 ```
-google-cloud-aiplatform[agent_engines,adk]>=1.112
+google-cloud-aiplatform[agent_engines,adk]>=2.0
 google-adk[a2a]
 uvicorn
 fastapi
-a2a-sdk>=0.3.5
+a2a-sdk>=1.1
 ```
 
 ## Self-Contained Deployment Pattern (cloudpickle)
@@ -472,7 +478,7 @@ def _build_agent():
 # Deploy
 app = agent_engines.AdkApp(agent=_build_agent(), enable_tracing=True)
 remote = agent_engines.create(agent_engine=app, display_name="My Agent",
-    requirements=["google-adk>=1.19.0", "google-cloud-aiplatform"])
+    requirements=["google-adk>=2.8", "google-cloud-aiplatform"])
 ```
 
 ## CLI Deployment (adk deploy)

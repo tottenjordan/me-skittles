@@ -1,11 +1,16 @@
 ---
 name: gcp-diagram
-description: Generate professional GCP-branded architecture diagrams using Gemini image generation models. Use when the user asks to create architecture diagrams, system diagrams, data flow diagrams, deployment diagrams, database schema diagrams, or any technical diagram styled like official Google Cloud Platform documentation. Also use when asked to visualize GCP architectures, agent systems, microservices, or service topologies. Supports gemini-3-pro-image-preview and gemini-2.5-flash-image models via Vertex AI.
+description: Generate professional GCP-branded architecture diagrams using Gemini image generation models. Use when the user asks to create architecture diagrams, system diagrams, data flow diagrams, deployment diagrams, database schema diagrams, or any technical diagram styled like official Google Cloud Platform documentation. Also use when asked to visualize GCP architectures, agent systems, microservices, or service topologies. Supports gemini-3-pro-image and gemini-3.1-flash-image via Vertex AI.
 ---
 
 # GCP Architecture Diagram Generator
 
 Generate publication-quality architecture diagrams styled like official Google Cloud Platform documentation using Gemini image generation.
+
+This skill drives **Vertex AI image generation directly** and overlays official Google Cloud icon
+assets via `scripts/overlay_icons.py`. For diagrams built through the **PaperBanana** MCP pipeline —
+including its own GCP branding path, statistical plots, batch generation, and figure evaluation —
+use the `paperbanana` skill instead.
 
 ## Workflow
 
@@ -47,10 +52,10 @@ Try the PaperBanana MCP tool first (`mcp__paperbanana__generate_diagram`). If un
 from google import genai
 from google.genai import types
 
-## gemini-3 requires global endpoint; gemini-2.5-flash-image uses us-central1
+## gemini-3 image models require the global endpoint
 models = [
-    ("gemini-3-pro-image-preview", "global"),
-    ("gemini-2.5-flash-image", "us-central1"),
+    ("gemini-3-pro-image", "global"),
+    ("gemini-3.1-flash-image", "global"),
 ]
 for model, location in models:
     try:
@@ -70,7 +75,10 @@ for model, location in models:
         continue  # try fallback
 ```
 
-**Model priority:** `gemini-3-pro-image-preview` (global endpoint) > `gemini-2.5-flash-image` (us-central1). Fall back automatically.
+**Model priority:** `gemini-3-pro-image` (highest fidelity) > `gemini-3.1-flash-image` (faster, cheaper). Falls back automatically.
+
+Both are the stable IDs. The `-preview` variants were retired on Vertex AI on 2026-07-17, and
+`gemini-2.5-flash-image` is scheduled for shutdown 2026-10-02 — do not pin to any of them.
 
 **IMPORTANT:** `gemini-3-*` models require `location="global"`. Using a regional endpoint (e.g., `us-central1`) will return 404.
 

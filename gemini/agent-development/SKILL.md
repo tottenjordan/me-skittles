@@ -118,9 +118,9 @@ Which model the agent should use.
 
 **Options:**
 - `inherit` - Use same model as parent (recommended)
-- `gemini-3-flash-preview` - Gemini gemini-3-flash-preview (balanced)
-- `gemini-1.5-pro` - Gemini gemini-1.5-pro (most capable, expensive)
-- `gemini-1.5-flash` - Gemini gemini-1.5-flash (fast, cheap)
+- `gemini-flash-latest` - Latest Flash; balanced, and auto-updates with each release
+- `gemini-3.1-pro-preview` - Most capable, most expensive (Preview; `gemini-2.5-pro` for a stable Pro)
+- `gemini-3.5-flash-lite` - Fastest and cheapest
 
 **Recommendation:** Use `inherit` unless agent needs specific model capabilities.
 
@@ -352,7 +352,7 @@ Output: [What to provide]
 |-------|----------|--------|---------|
 | name | Yes | lowercase-hyphens | code-reviewer |
 | description | Yes | Text + examples | Use when... <example>... |
-| model | Yes | inherit/gemini-3-flash-preview/gemini-1.5-pro/gemini-1.5-flash | inherit |
+| model | Yes | inherit/gemini-flash-latest/gemini-3.1-pro-preview/gemini-3.5-flash-lite | inherit |
 | color | Yes | Color name | blue |
 | tools | No | Array of tool names | ["Read", "Grep"] |
 
