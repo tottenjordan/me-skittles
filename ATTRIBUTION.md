@@ -51,7 +51,10 @@ otherwise the bundle validator starts failing again.
 | Path | Description |
 |---|---|
 | `claude/writing-skills/anthropic-best-practices.md` | Copy of Anthropic's Agent Skills authoring guidance |
-| `claude/frontend-design/` | Derived from the official `frontend-design` Claude Code plugin |
+
+A `frontend-design` skill derived from the official Claude Code plugin was removed once the plugin
+itself became available through the marketplace — install `frontend-design@claude-plugins-official`
+instead of vendoring a copy that drifts.
 
 The Gemini tree carries an adapted equivalent at `gemini/writing-skills/gemini-best-practices.md`.
 
