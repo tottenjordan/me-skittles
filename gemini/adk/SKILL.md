@@ -129,6 +129,11 @@ root_agent = Agent(
 
 Variables are resolved from session state at runtime.
 
+> **Pin the model on regional endpoints.** `gemini-flash-latest` resolves fine for local
+> development, but ADK's docs note the `-latest` aliases may not resolve when
+> `GOOGLE_CLOUD_LOCATION` is a region such as `us-central1`. Use an explicit version there —
+> the `agent-engine` skill pins `gemini-3.7-flash` for this reason.
+
 ## Function Tools
 
 Tools let agents interact with external systems.

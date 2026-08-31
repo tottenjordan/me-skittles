@@ -7,6 +7,12 @@ description: Deploy and manage AI agents on Vertex AI Agent Engine. Use when dep
 
 Deploy, manage, and scale AI agents in production on Google Cloud.
 
+
+> **Model IDs on regional endpoints.** These samples pin `gemini-3.7-flash` rather than using the
+> `gemini-flash-latest` alias. Agent Engine deploys to a region (`us-central1` above), and ADK's
+> docs note the `-latest` aliases may not resolve on regional endpoints — pin an explicit version
+> here. The alias is fine in the `adk` skill's local-development examples.
+
 ## Quick Reference
 
 | Task | Pattern |
@@ -68,7 +74,7 @@ def get_data(query: str) -> dict:
     return {"status": "success", "data": "..."}
 
 agent = Agent(
-    model="gemini-flash-latest",
+    model="gemini-3.7-flash",
     name="data_agent",
     instruction="You help users find data.",
     tools=[get_data]
@@ -220,7 +226,7 @@ def get_pto_balance(user_id: str) -> dict:
 
 pto_agent = Agent(
     name="pto_agent",
-    model="gemini-flash-latest",
+    model="gemini-3.7-flash",
     instruction="You check PTO balances. Use get_pto_balance when asked.",
     tools=[get_pto_balance]
 )
