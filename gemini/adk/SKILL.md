@@ -343,6 +343,13 @@ For detailed information on advanced ADK patterns, agent composition strategies,
 - Evaluation and testing strategies
 - Complete multi-tier examples
 
+**[references/state_management.md](references/state_management.md)** - Session and state handling:
+
+- `session.state` scopes (`user:`, `app:`, `temp:`) and when each persists
+- `output_key` vs explicit state writes
+- State propagation across sub-agents and workflow agents
+- Known Agent Engine limitations and workarounds
+
 ## Environment Configuration
 
 ### Google AI (Gemini API)

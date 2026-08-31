@@ -141,6 +141,8 @@ After user approval, apply changes using the Edit tool. Preserve existing conten
 
 See [references/templates.md](references/templates.md) for GEMINI.md templates by project type.
 
+See [references/update-guidelines.md](references/update-guidelines.md) for how to make targeted edits to an existing GEMINI.md without churning it.
+
 ## Common Issues to Flag
 
 1. **Stale commands**: Build commands that no longer work
