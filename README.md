@@ -87,7 +87,7 @@ its extension mechanism differs from Claude Code's.
 ### Other
 | Skill | Description |
 |-------|-------------|
-| `claude-md-improver` | Audit and improve CLAUDE.md files |
+| `claude-md-improver` | Audit and improve CLAUDE.md files (Claude only) |
 | `gemini-enterprise` | Gemini Enterprise (Discovery Engine) search |
 | `insights-report` | Pipeline insights reports |
 
@@ -95,6 +95,7 @@ its extension mechanism differs from Claude Code's.
 | Skill | Description |
 |-------|-------------|
 | `gemini-md-author` | Gemini CLI configuration authoring |
+| `gemini-md-improver` | Audit and improve GEMINI.md files |
 | `git-commit-formatter` | Git commit message formatting |
 | `license-header-adder` | Add license headers to source files |
 

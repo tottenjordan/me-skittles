@@ -1,10 +1,10 @@
 # Property-Based Testing Skill
 
-A Claude Code skill that provides guidance for property-based testing (PBT) across multiple programming languages and smart contract development.
+A Gemini CLI skill that provides guidance for property-based testing (PBT) across multiple programming languages and smart contract development.
 
 ## What This Skill Does
 
-When activated, this skill helps Claude:
+When activated, this skill helps Gemini:
 
 - **Detect PBT opportunities** - Recognizes patterns like encode/decode pairs, validators, normalizers, pure functions, and smart contract invariants
 - **Generate property-based tests** - Creates tests with appropriate strategies, properties, and edge cases
@@ -57,7 +57,7 @@ property-based-testing/
 
 ## Usage
 
-The skill activates automatically when Claude detects relevant patterns:
+The skill activates automatically when Gemini detects relevant patterns:
 
 - Serialization pairs (`encode`/`decode`, `serialize`/`deserialize`)
 - Validators and normalizers
@@ -65,7 +65,7 @@ The skill activates automatically when Claude detects relevant patterns:
 - Data structure operations
 - Smart contracts (Solidity/Vyper)
 
-You can also invoke it explicitly by asking Claude to use property-based testing.
+You can also invoke it explicitly by asking Gemini to use property-based testing.
 
 ### Example Prompts
 

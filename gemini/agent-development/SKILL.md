@@ -1,10 +1,10 @@
 ---
 name: agent-development
-description: This skill should be used when the user asks to "create an agent", "add an agent", "write a subagent", "agent frontmatter", "when to use description", "agent examples", "agent tools", "agent colors", "autonomous agent", or needs guidance on agent structure, system prompts, triggering conditions, or agent development best practices for Claude Code plugins.
+description: This skill should be used when the user asks to "create an agent", "add an agent", "write a subagent", "agent frontmatter", "when to use description", "agent examples", "agent tools", "agent colors", "autonomous agent", or needs guidance on agent structure, system prompts, triggering conditions, or agent development best practices for Gemini CLI plugins.
 version: 0.1.0
 ---
 
-# Agent Development for Claude Code Plugins
+# Agent Development for Gemini CLI Plugins
 
 ## Overview
 
@@ -14,7 +14,7 @@ Agents are autonomous subprocesses that handle complex, multi-step tasks indepen
 - Agents are FOR autonomous work, commands are FOR user-initiated actions
 - Markdown file format with YAML frontmatter
 - Triggering via description field with examples
-- System prompt defines agent behavior
+- System instruction defines agent behavior
 - Model and color customization
 
 ## Agent File Structure
@@ -81,7 +81,7 @@ Agent identifier used for namespacing and invocation.
 
 ### description (required)
 
-Defines when Claude should trigger this agent. **This is the most critical field.**
+Defines when Gemini should trigger this agent. **This is the most critical field.**
 
 **Must include:**
 1. Triggering conditions ("Use this agent when...")
@@ -96,7 +96,7 @@ Use this agent when [conditions]. Examples:
 <example>
 Context: [Scenario description]
 user: "[What user says]"
-assistant: "[How Claude should respond]"
+assistant: "[How Gemini should respond]"
 <commentary>
 [Why this agent is appropriate]
 </commentary>
@@ -118,9 +118,9 @@ Which model the agent should use.
 
 **Options:**
 - `inherit` - Use same model as parent (recommended)
-- `sonnet` - Claude Sonnet (balanced)
-- `opus` - Claude Opus (most capable, expensive)
-- `haiku` - Claude Haiku (fast, cheap)
+- `gemini-3-flash-preview` - Gemini gemini-3-flash-preview (balanced)
+- `gemini-1.5-pro` - Gemini gemini-1.5-pro (most capable, expensive)
+- `gemini-1.5-flash` - Gemini gemini-1.5-flash (fast, cheap)
 
 **Recommendation:** Use `inherit` unless agent needs specific model capabilities.
 
@@ -159,7 +159,7 @@ tools: ["Read", "Write", "Grep", "Bash"]
 - Testing: `["Read", "Bash", "Grep"]`
 - Full access: Omit field or use `["*"]`
 
-## System Prompt Design
+## System Instruction Design
 
 The markdown body becomes the agent's system prompt. Write in second person, addressing the agent directly.
 
@@ -218,7 +218,7 @@ Handle these situations:
 
 ### Method 1: AI-Assisted Generation
 
-Use this prompt pattern (extracted from Claude Code):
+Use this prompt pattern (extracted from Gemini CLI):
 
 ```
 Create an agent configuration based on this request: "[YOUR DESCRIPTION]"
@@ -278,7 +278,7 @@ See `examples/agent-creation-prompt.md` for complete template.
 **Must include:** Triggering conditions and examples
 **Best:** 200-1,000 characters with 2-4 examples
 
-### System Prompt Validation
+### System Instruction Validation
 
 **Length:** 20-10,000 characters
 **Best:** 500-3,000 characters
@@ -312,10 +312,10 @@ Create test scenarios to verify agent triggers correctly:
 
 1. Write agent with specific triggering examples
 2. Use similar phrasing to examples in test
-3. Check Claude loads the agent
+3. Check Gemini loads the agent
 4. Verify agent provides expected functionality
 
-### Test System Prompt
+### Test System Instruction
 
 Ensure system prompt is complete:
 
@@ -352,7 +352,7 @@ Output: [What to provide]
 |-------|----------|--------|---------|
 | name | Yes | lowercase-hyphens | code-reviewer |
 | description | Yes | Text + examples | Use when... <example>... |
-| model | Yes | inherit/sonnet/opus/haiku | inherit |
+| model | Yes | inherit/gemini-3-flash-preview/gemini-1.5-pro/gemini-1.5-flash | inherit |
 | color | Yes | Color name | blue |
 | tools | No | Array of tool names | ["Read", "Grep"] |
 
@@ -382,7 +382,7 @@ For detailed guidance, consult:
 
 - **`references/system-prompt-design.md`** - Complete system prompt patterns
 - **`references/triggering-examples.md`** - Example formats and best practices
-- **`references/agent-creation-system-prompt.md`** - The exact prompt from Claude Code
+- **`references/agent-creation-system-prompt.md`** - The exact prompt from Gemini CLI
 
 ### Example Files
 

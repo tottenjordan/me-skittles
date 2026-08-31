@@ -11,9 +11,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### Directory Layout
 
 - `claude/` — Skills for Claude Code (SKILL.md-based, loaded via Claude Code's skill system)
-- `gemini/` — Parallel skills for Gemini CLI (mostly mirrored from `claude/`, with some Gemini-specific additions like `gemini-md-author`, `git-commit-formatter`, `license-header-adder`)
+- `gemini/` — Parallel skills for Gemini CLI, ported (not copied) from `claude/`: Claude-specific
+  terminology, `CLAUDE.md` references, and `.claude-plugin/` manifests are replaced with their
+  Gemini equivalents (`GEMINI.md`, `.gemini-plugin/`). Plus Gemini-specific additions:
+  `gemini-md-author`, `gemini-md-improver`, `git-commit-formatter`, `license-header-adder`.
 
-Most skills exist in both directories. Claude-only skills include: `frontend-design`, `insights-report`, `inspect-vai-pipes`, `paperbanana`.
+Most skills exist in both directories. Claude-only skills: `claude-md-improver`, `frontend-design`,
+`insights-report`, `inspect-vai-pipes`, `paperbanana`.
+
+When editing a skill that exists in both trees, update both. The Gemini copy is a port, not a
+mirror — do not copy Claude-specific wording across.
 
 ### Skill Structure
 
@@ -44,7 +51,7 @@ The `description` field controls when the skill is auto-triggered. Write it as t
 | Testing | `testing-anti-patterns`, `testing-skills-with-subagents`, `condition-based-waiting`, `property-based-testing`, `testing-handbook-skills` |
 | Tools/Automation | `browser-use`, `playwright-skill`, `git-worktrees`, `using-git-worktrees`, `inspect-vai-pipes` |
 | Diagrams/Frontend | `generate-diagram`, `evaluate-diagram`, `gcp-diagram`, `paperbanana`, `frontend-design` |
-| Other | `claude-md-improver`, `gemini-enterprise`, `insights-report` |
+| Other | `claude-md-improver` (Claude), `gemini-md-improver` (Gemini), `gemini-enterprise`, `insights-report` |
 
 ### Multi-skill Bundles
 

@@ -10,7 +10,7 @@ Generate: **{name}** (type: {type}, pass: {pass})
 
 ## Context
 
-You are generating a Claude Code skill as a sibling to testing-handbook-generator:
+You are generating a Gemini CLI skill as a sibling to testing-handbook-generator:
 ```
 plugins/testing-handbook-skills/skills/
 ├── testing-handbook-generator/   # This generator (do not modify)

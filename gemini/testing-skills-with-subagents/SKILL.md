@@ -17,7 +17,7 @@ You run scenarios without the skill (RED - watch agent fail), write skill addres
 
 See skills/testing/test-driven-development for the fundamental cycle. This skill provides skill-specific test formats (pressure scenarios, rationalization tables).
 
-**Complete worked example:** See examples/CLAUDE_MD_TESTING.md for a full test campaign testing CLAUDE.md documentation variants.
+**Complete worked example:** See examples/GEMINI_MD_TESTING.md for a full test campaign testing GEMINI.md documentation variants.
 
 ## When to Use
 

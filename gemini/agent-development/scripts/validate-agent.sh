@@ -12,7 +12,7 @@ if [ $# -eq 0 ]; then
   echo "  - YAML frontmatter structure"
   echo "  - Required fields (name, description, model, color)"
   echo "  - Field formats and constraints"
-  echo "  - System prompt presence and length"
+  echo "  - System instruction presence and length"
   echo "  - Example blocks in description"
   exit 1
 fi
@@ -128,11 +128,11 @@ else
   echo "✅ model: $MODEL"
 
   case "$MODEL" in
-    inherit|sonnet|opus|haiku)
+    inherit|gemini-3-flash-preview|gemini-1.5-pro|gemini-1.5-flash)
       # Valid model
       ;;
     *)
-      echo "⚠️  Unknown model: $MODEL (valid: inherit, sonnet, opus, haiku)"
+      echo "⚠️  Unknown model: $MODEL (valid: inherit, gemini-3-flash-preview, gemini-1.5-pro, gemini-1.5-flash)"
       ((warning_count++))
       ;;
   esac
@@ -167,28 +167,28 @@ else
   echo "💡 tools: not specified (agent has access to all tools)"
 fi
 
-# Check 5: System prompt
+# Check 5: System instruction
 echo ""
 echo "Checking system prompt..."
 
 if [ -z "$SYSTEM_PROMPT" ]; then
-  echo "❌ System prompt is empty"
+  echo "❌ System instruction is empty"
   ((error_count++))
 else
   prompt_length=${#SYSTEM_PROMPT}
-  echo "✅ System prompt: $prompt_length characters"
+  echo "✅ System instruction: $prompt_length characters"
 
   if [ $prompt_length -lt 20 ]; then
-    echo "❌ System prompt too short (minimum 20 characters)"
+    echo "❌ System instruction too short (minimum 20 characters)"
     ((error_count++))
   elif [ $prompt_length -gt 10000 ]; then
-    echo "⚠️  System prompt very long (over 10,000 characters)"
+    echo "⚠️  System instruction very long (over 10,000 characters)"
     ((warning_count++))
   fi
 
   # Check for second person
   if ! echo "$SYSTEM_PROMPT" | grep -q "You are\|You will\|Your"; then
-    echo "⚠️  System prompt should use second person (You are..., You will...)"
+    echo "⚠️  System instruction should use second person (You are..., You will...)"
     ((warning_count++))
   fi
 

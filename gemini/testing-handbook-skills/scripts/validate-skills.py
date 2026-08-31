@@ -44,7 +44,7 @@ import yaml
 MAX_LINES = 500
 MAX_NAME_LENGTH = 64
 MAX_DESCRIPTION_LENGTH = 1024
-RESERVED_WORDS = frozenset({"anthropic", "claude"})
+RESERVED_WORDS = frozenset({"gemini", "gemini"})
 VALID_SKILL_TYPES = frozenset({"tool", "fuzzer", "technique", "domain"})
 NAME_PATTERN = re.compile(r"^[a-z0-9-]{1,64}$")
 SHORTCODE_PATTERN = re.compile(r"\{\{[<%]")
