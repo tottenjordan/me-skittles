@@ -16,8 +16,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   Gemini equivalents (`GEMINI.md`, `.gemini-plugin/`). Plus Gemini-specific additions:
   `gemini-md-author`, `gemini-md-improver`, `git-commit-formatter`, `license-header-adder`.
 
-Most skills exist in both directories. Claude-only skills: `claude-md-improver`, `frontend-design`,
-`insights-report`, `inspect-vai-pipes`, `paperbanana`.
+Most skills exist in both directories. Claude-only skills: `claude-md-improver`, `insights-report`,
+`inspect-vai-pipes`, `modern-python`.
 
 When editing a skill that exists in both trees, update both. The Gemini copy is a port, not a
 mirror — do not copy Claude-specific wording across.
@@ -50,7 +50,7 @@ The `description` field controls when the skill is auto-triggered. Write it as t
 | Development workflow | `writing-skills`, `writing-plans`, `executing-plans`, `subagent-driven-development`, `requesting-code-review`, `receiving-code-review`, `finishing-a-development-branch`, `ralph-wiggum`, `modern-python` (Claude) |
 | Testing | `test-driven-development`, `testing-anti-patterns`, `testing-skills-with-subagents`, `condition-based-waiting`, `property-based-testing`, `testing-handbook-skills` |
 | Tools/Automation | `browser-use`, `playwright-skill`, `git-worktrees`, `inspect-vai-pipes` |
-| Diagrams/Frontend | `paperbanana`, `gcp-diagram`, `frontend-design` |
+| Diagrams | `paperbanana`, `gcp-diagram` |
 | Google Cloud/Data (Gemini only) | 29 Google-published skills: `bigquery-*`, `gcp-*`, `dbt-bigquery`, `dataform-bigquery`, `notebook-guidance`, … — routed from `gcp-data-pipelines` |
 | Other | `claude-md-improver` (Claude), `gemini-md-improver` (Gemini), `gemini-enterprise`, `insights-report` |
 
