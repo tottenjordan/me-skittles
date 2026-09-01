@@ -1,11 +1,14 @@
 # Installable groups. ./scripts/install.sh --group <name> installs a whole group.
 #
-# Every skill directory must appear in exactly one group for its tree; the
-# validator fails otherwise, so this file cannot silently drift from the tree.
+# Every skill directory must appear in exactly one group for its tree, and every
+# entry needs name/tree/description/skills. scripts/validate-skills.py checks
+# both in CI, so this file cannot silently drift from the trees: add a skill
+# without grouping it and the build fails.
 #
 # One [[group]] entry per (tree, group). Keep the structure flat and one skill
 # per line: this file is read both by Python's tomllib and by awk in the
-# installer.
+# installer, and the validator enforces the shape awk needs — no inline arrays,
+# no multi-line strings.
 
 [[group]]
 name = "agents"

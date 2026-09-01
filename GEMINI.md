@@ -91,6 +91,11 @@ push and PR. It enforces:
 - No retired model IDs outside text discussing their retirement
 - No frontmatter keys the harness ignores, such as `when_to_use` — triggers belong in `description`
 - Helper scripts declaring third-party dependencies via PEP 723, so `uv run <script>` needs no setup
+- `groups.toml` parsing, carrying every required key, and putting each skill directory in exactly
+  one group for its tree — so adding a skill without grouping it fails the build. Also the flat
+  shape the installer's awk parser needs: no inline arrays, no multi-line strings
+- The README skill catalogue naming no skill that is absent from both trees (a skill the catalogue
+  omits is a warning)
 
 Run it before committing any skill change. It is also the guard against re-syncing upstream content
 that reintroduces already-fixed defects — run `--tree gemini` after pulling from any upstream skills
@@ -105,6 +110,8 @@ repository.
 - Test with `testing-skills-with-subagents` before deployment
 - Install skills with `./scripts/install.sh` — `--list`, `--all`, or named skills, with
   `--tree gemini` for this tree
+- A new skill must be added to [`groups.toml`](groups.toml), or CI fails — every skill belongs
+  to exactly one group per tree, and `./scripts/install.sh --group` installs by group
 - The `playwright-skill` directory is a Node.js package — run `npm install` there if working on
   browser automation
 - Bundle-specific validation: `uv run scripts/validate-skills.py` from `gemini/testing-handbook-skills/`

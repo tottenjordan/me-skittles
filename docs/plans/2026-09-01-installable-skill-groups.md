@@ -20,9 +20,12 @@ only bodies are deferred. Measured across the current catalogue:
 | `claude/` | 26 top-level | ~1.9k tokens |
 | `gemini/` | 55 top-level | ~5.2k tokens |
 
-The Gemini figure is dominated by the 29-skill Google Cloud family. Someone doing ADK work rarely
+The Gemini figure is dominated by the Google Cloud family (26 skills after the Task 1 rehoming). Someone doing ADK work rarely
 needs `gcs-security-assessment` loaded, but `install.sh --all` gives them no way to say so — the
 installer takes `--all` or an explicit list of 30-odd names.
+
+**Status:** all five tasks complete on `feat/install-groups-flag`. Tasks 3–4 were dispatched
+together, since both add checks to `scripts/validate-skills.py`.
 
 **Decisions taken** (confirmed with the user):
 
@@ -38,7 +41,7 @@ the option stays available; nothing in this plan implements it.
 
 ---
 
-## Task 1: Add `groups.toml`
+## Task 1: Add `groups.toml` — DONE
 
 **File:** Create `groups.toml` (repo root)
 
@@ -53,7 +56,7 @@ Array-of-tables, one entry per `(tree, group)`, so each carries its own prose:
 [[group]]
 name = "gcp"
 tree = "gemini"
-description = "Google Cloud and BigQuery — 29 Google-published skills. Start at gcp-data-pipelines."
+description = "Google Cloud and BigQuery. Start at gcp-data-pipelines."
 skills = ["accidental-data-loss-prevention", "bigquery-ai-ml", ...]
 ```
 
@@ -62,20 +65,28 @@ Both partitions are already verified complete and disjoint:
 | Group | `claude/` | `gemini/` |
 |---|---:|---:|
 | `agents` | 4 | 4 |
-| `workflow` | 9 | 8 |
+| `workflow` | 9 | 9 |
 | `testing` | 6 | 6 |
 | `diagrams` | 2 | 2 |
 | `tools` | 5 | 3 |
-| `meta` | 2 | 5 |
-| `gcp` | — | 29 |
+| `meta` | 2 | 6 |
+| `data` | — | 1 |
+| `gcp` | — | 26 |
 | **total** | **28** | **57** |
 
-Seed the `gcp` group by selecting on `metadata.publisher: google`, which matches exactly those 29
+> **Amended after Task 1.** The `gemini` column originally read `workflow 8 / meta 5 / gcp 29` with
+> no `data` group. Seeding `gcp` from `metadata.publisher: google` is *publisher*-based while the
+> group is named for a *topic*, and four members were not about Google Cloud. `skill-repair` moved
+> to `meta`, `managing-python-dependencies` to `workflow`, and `ml-best-practices` into a new `data`
+> group; `notebook-guidance` was moved there too and then returned to `gcp`, since it is specifically
+> about BigQuery notebooks. Tree total is unchanged at 57.
+
+Seed the `gcp` group by selecting on `metadata.publisher: google`, which matched exactly 29 at the time
 and cleanly excludes the other four Gemini-only skills (`gemini-md-author`, `gemini-md-improver`,
 `git-commit-formatter`, `license-header-adder`). Do not derive it at runtime — the manifest is the
 source of truth, and the metadata is only how the initial list is generated.
 
-## Task 2: Teach the installer about groups
+## Task 2: Teach the installer about groups — DONE
 
 **File:** Modify `scripts/install.sh`
 
@@ -90,7 +101,7 @@ verified stays intact: idempotent, repairs broken links, and never removes a lin
   adk                                      agents     installed
   bigquery-sql                             gcp        -
   ...
-  gcp        29 skills   0 installed
+  gcp        26 skills   0 installed
   agents      4 skills   4 installed
 ```
 
@@ -101,7 +112,7 @@ silently installing nothing.
 
 Also add `--group` to the usage block, which `--help` prints from the file header.
 
-## Task 3: Validate the manifest
+## Task 3: Validate the manifest — DONE
 
 **File:** Modify `scripts/validate-skills.py`
 
@@ -121,7 +132,7 @@ Errors:
 This is what makes the manifest safe to trust: adding a skill without grouping it fails CI, so the
 manifest cannot rot the way the README did.
 
-## Task 4: Validate the README against reality
+## Task 4: Validate the README against reality — DONE
 
 **File:** Modify `scripts/validate-skills.py`
 
@@ -135,7 +146,7 @@ Scope the scan to the catalogue section so incidental prose mentions do not trip
 intentional exceptions must not fire: `frontend-design` (named as a pointer to the official plugin)
 and skill names inside the bundle listing.
 
-## Task 5: Document
+## Task 5: Document — DONE
 
 **Files:** Modify `README.md`, `CLAUDE.md`
 
@@ -143,8 +154,8 @@ In the README's **Setup** and **Context cost** sections, lead with group install
 recommendation:
 
 ```bash
-./scripts/install.sh --group agents --group workflow    # ~1.2k tokens
-./scripts/install.sh --tree gemini --group gcp          # the 29-skill family, on demand
+./scripts/install.sh --group agents --group workflow    # ~860 tokens (measured)
+./scripts/install.sh --tree gemini --group gcp          # the Google Cloud family, on demand
 ```
 
 State the per-group token cost so the trade is visible at the point of decision. In `CLAUDE.md`, add
@@ -170,7 +181,7 @@ one line under Conventions: a new skill must be added to `groups.toml`, or CI fa
    T=$(mktemp -d)
    ./scripts/install.sh --dest "$T" --group agents        # expect 4 links
    ./scripts/install.sh --dest "$T" --group agents        # expect 0 changed (idempotent)
-   ./scripts/install.sh --tree gemini --dest "$T" --group gcp   # expect 29
+   ./scripts/install.sh --tree gemini --dest "$T" --group gcp   # expect 26
    ./scripts/install.sh --dest "$T" --group nonesuch      # expect a clear failure, not silence
    ./scripts/install.sh --dest "$T" --uninstall --group agents  # expect 4 removed
    ```

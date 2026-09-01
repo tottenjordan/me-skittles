@@ -16,10 +16,15 @@ Checks the invariants that make a skill loadable and keep the two trees honest:
 - Plugin bundles use the manifest directory matching their tree
 - SKILL.md stays under 500 lines (warns at 450) so progressive disclosure is preserved
 - No retired model IDs outside of text that discusses their retirement
+- groups.toml parses, has every required key, puts each skill directory in
+  exactly one group for its tree, and means the same thing to tomllib as it
+  does to the installer's awk parser (scripts/parse-groups.awk, run here)
+- The README skill catalogue names no skill that does not exist
 - Descriptions stay under 500 chars — they are loaded every session (warning)
 - Helper scripts declare their third-party dependencies (warning)
 - No frontmatter keys the harness silently ignores (warning)
 - Relative markdown links resolve (warning; template placeholders are skipped)
+- Every skill appears in the README skill catalogue (warning)
 
 Deliberately NOT checked here: required per-type sections and Hugo-shortcode
 artifacts. Those are bundle-specific and owned by
@@ -38,10 +43,16 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
+# `tomllib` is stdlib from 3.11, which the PEP 723 header above requires. ruff
+# does not read that header, so under its default target version it sorts the
+# import here rather than into the stdlib block above; keep it here so
+# `uvx ruff check` stays clean without a config file.
+import tomllib
 import yaml
 
 TREES = ("claude", "gemini")
@@ -51,7 +62,7 @@ MIN_DESCRIPTION_LENGTH = 20
 
 # Every skill's description is loaded on every session, whether or not the skill
 # fires — so description length is a fixed context tax that scales with the
-# catalogue. At 117 skills the two trees already cost roughly 1.9k and 5.2k
+# catalogue. At 117 skills the two trees already cost roughly 1.8k and 5.2k
 # tokens per session. 1024 is the API ceiling; this is the budget that keeps the
 # total sane, and the guidance calls a description "one line".
 WARN_DESCRIPTION_LENGTH = 500
@@ -63,6 +74,17 @@ WARN_DESCRIPTION_LENGTH = 500
 MAX_SKILL_LINES = 500
 WARN_SKILL_LINES = 450
 NAME_PATTERN = re.compile(r"^[a-z0-9-]{1,64}$")
+
+# Stricter form, used only when deciding whether a backticked token in the
+# README catalogue is a skill name. NAME_PATTERN also accepts leading, trailing
+# and doubled hyphens, so a flag such as `--group` in a catalogue cell would be
+# read as a skill and reported as a dangling entry. Frontmatter `name` keeps the
+# looser pattern, which is the rule that field is actually held to.
+#
+# The length lookahead keeps this strictly narrower than NAME_PATTERN: it must
+# only ever reject more tokens, never accept ones the old scan skipped.
+CATALOGUE_NAME_PATTERN = re.compile(r"^(?=.{1,64}$)[a-z0-9]+(?:-[a-z0-9]+)*$")
+
 LINK_PATTERN = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
 ARTIFACT_GLOBS = ("**/__pycache__", "**/*.pyc")
 
@@ -126,6 +148,29 @@ GEMINI_PURITY_ALLOWLIST: dict[str, str] = {
 
 # Manifest directory each tree's plugin bundles must use.
 PLUGIN_DIR = {"claude": ".claude-plugin", "gemini": ".gemini-plugin"}
+
+# groups.toml drives `./scripts/install.sh --group`, and the installer reads it
+# with awk rather than a TOML parser. These checks are what make that safe: the
+# manifest is guaranteed here to be well-formed, complete, disjoint, and to mean
+# the same thing to that awk program as it does to tomllib.
+GROUPS_FILE = "groups.toml"
+GROUPS_PARSER = "scripts/parse-groups.awk"
+GROUP_REQUIRED_KEYS = ("name", "tree", "description", "skills")
+
+# How many disagreeing entries to name before truncating; the first handful
+# already identify the cause.
+MAX_REPORTED_TRIPLES = 12
+
+# The README's catalogue is checked against the trees because it has shipped
+# entries for skills that did not exist -- four dangling `adk-*` rows survived
+# the removal of the skills they named.
+README_FILE = "README.md"
+README_CATALOGUE_HEADING = "## Skill catalogue"
+BACKTICKED = re.compile(r"`([^`\n]+)`")
+
+# A parenthesised annotation on a catalogue entry, e.g. `gcp-data-pipelines`
+# (router) or `property-based-testing` *(bundle)*.
+CELL_ANNOTATION = re.compile(r"\*?\([^)]*\)\*?")
 
 
 @dataclass
@@ -283,13 +328,43 @@ def check_symlinks(repo: Path, report: Report) -> None:
             )
 
 
+def tracked_paths(repo: Path) -> set[str] | None:
+    """Every path git tracks, or None if git cannot be consulted."""
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(repo), "ls-files"],
+            capture_output=True, text=True, check=True, timeout=30,
+        ).stdout
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return set(out.splitlines())
+
+
 def check_artifacts(repo: Path, report: Report) -> None:
-    """Build artifacts should never be committed."""
+    """Build artifacts should never be *committed*.
+
+    Only tracked paths count. `__pycache__` is gitignored, so merely importing
+    a script in this directory used to fail validation with "Committed build
+    artifact" for a file git had never seen — a false positive whose message
+    sent you looking for a commit that did not exist.
+
+    If git cannot be consulted, fall back to flagging every artifact: better a
+    false positive than silently missing a real one.
+    """
+    tracked = tracked_paths(repo)
     for pattern in ARTIFACT_GLOBS:
         for path in sorted(repo.glob(pattern)):
             if ".git" in path.parts:
                 continue
-            report.error(path.relative_to(repo), "Committed build artifact")
+            rel = path.relative_to(repo)
+            if tracked is not None and rel.as_posix() not in tracked:
+                continue  # local build detritus, not committed
+            report.error(
+                rel,
+                "Committed build artifact"
+                if tracked is not None
+                else "Build artifact (could not consult git to confirm it is tracked)",
+            )
 
 
 def check_gemini_purity(repo: Path, report: Report) -> None:
@@ -448,6 +523,315 @@ def check_plugin_manifests(repo: Path, report: Report) -> None:
             )
 
 
+def installable_skills(repo: Path) -> dict[str, set[str]]:
+    """Top-level skill directory names per tree — exactly what install.sh offers."""
+    return {
+        tree: {
+            path.name
+            for path in (repo / tree).iterdir()
+            if path.is_dir() and not path.name.startswith(".")
+        }
+        for tree in TREES
+        if (repo / tree).is_dir()
+    }
+
+
+def check_groups(repo: Path, report: Report) -> None:
+    """groups.toml must partition every skill directory into exactly one group.
+
+    `./scripts/install.sh --group` reads this manifest with awk, so it cannot
+    validate the file it parses. Everything that makes the awk parser safe is
+    enforced here instead: the file exists, parses as TOML, every entry carries
+    all four required keys, names a real tree, lists only skills that exist, and
+    reads identically through the installer's parser and through tomllib.
+
+    Completeness and disjointness are the load-bearing part. A skill in no group
+    is unreachable via `--group` and shows as `-` in `--list`; a skill in two
+    groups makes `--list`'s single GROUP column a lie. Requiring an exact
+    partition means adding a skill without grouping it fails CI, which is what
+    keeps the manifest from silently drifting away from the trees.
+    """
+    path = repo / GROUPS_FILE
+    if not path.is_file():
+        report.error(GROUPS_FILE, "Missing — `./scripts/install.sh --group` reads this manifest")
+        return
+    try:
+        text = path.read_text(encoding="utf-8")
+        data = tomllib.loads(text)
+    except (OSError, UnicodeDecodeError, tomllib.TOMLDecodeError) as exc:
+        report.error(GROUPS_FILE, f"Unparseable: {exc}")
+        return
+
+    check_groups_parser_agreement(repo, text, data, report)
+
+    entries = data.get("group")
+    if not isinstance(entries, list) or not entries:
+        report.error(GROUPS_FILE, "No [[group]] entries — every skill must belong to a group")
+        return
+
+    available = installable_skills(repo)
+    membership: dict[tuple[str, str], list[str]] = {}  # (tree, skill) -> groups naming it
+    seen_groups: set[tuple[str, str]] = set()
+
+    for index, entry in enumerate(entries, start=1):
+        if not isinstance(entry, dict):
+            report.error(GROUPS_FILE, f"[[group]] #{index}: not a table")
+            continue
+        label = entry.get("name")
+        where = f"[[group]] #{index}" + (f" ({label})" if isinstance(label, str) else "")
+        for key in GROUP_REQUIRED_KEYS:
+            if not entry.get(key):
+                report.error(GROUPS_FILE, f"{where}: missing required key `{key}`")
+        if not all(entry.get(key) for key in ("name", "tree", "skills")):
+            continue
+
+        name, tree, skills = entry["name"], entry["tree"], entry["skills"]
+        if tree not in TREES:
+            report.error(
+                GROUPS_FILE, f"{where}: tree {tree!r} must be one of {', '.join(TREES)}"
+            )
+            continue
+        if (tree, name) in seen_groups:
+            report.error(
+                GROUPS_FILE,
+                f"{where}: duplicate group {name!r} for tree {tree!r} — the installer merges "
+                "these silently; use one entry per (tree, group)",
+            )
+        seen_groups.add((tree, name))
+
+        if not isinstance(skills, list) or not all(isinstance(s, str) for s in skills):
+            report.error(GROUPS_FILE, f"{where}: `skills` must be a list of strings")
+            continue
+        for skill in skills:
+            if skill not in available.get(tree, set()):
+                report.error(
+                    GROUPS_FILE,
+                    f"{where}: lists {skill!r}, which is not a skill directory in {tree}/",
+                )
+                continue
+            membership.setdefault((tree, skill), []).append(name)
+
+    for tree, skills in sorted(available.items()):
+        for skill in sorted(skills):
+            groups = membership.get((tree, skill), [])
+            if not groups:
+                report.error(
+                    GROUPS_FILE,
+                    f"{tree}/{skill} is in no group — add it to one, or `--group` installs and "
+                    "`--list` silently omit it",
+                )
+            elif len(groups) > 1:
+                report.error(
+                    GROUPS_FILE,
+                    f"{tree}/{skill} is in more than one group ({', '.join(groups)}) — "
+                    "membership must be disjoint, one group per skill per tree",
+                )
+
+
+def toml_group_triples(data: dict) -> set[tuple[str, str, str]]:
+    """(tree, group, skill) triples as a real TOML parser reads groups.toml.
+
+    Non-string scalars are stringified rather than dropped: `name = 12` is legal
+    TOML that declares a group, and pretending it does not exist here would hide
+    it from the comparison below — which is precisely the case that needs to be
+    caught, since the installer's parser cannot see it at all.
+    """
+    triples: set[tuple[str, str, str]] = set()
+    entries = data.get("group")
+    if not isinstance(entries, list):
+        return triples
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        name, tree, skills = entry.get("name"), entry.get("tree"), entry.get("skills")
+        if name is None or tree is None or not isinstance(skills, list):
+            continue
+        if isinstance(name, (list, dict)) or isinstance(tree, (list, dict)):
+            continue
+        for skill in skills:
+            if not isinstance(skill, (list, dict)):
+                triples.add((str(tree), str(name), str(skill)))
+    return triples
+
+
+def awk_group_triples(repo: Path, report: Report) -> set[tuple[str, str, str]] | None:
+    """Run the installer's own parser over groups.toml. None if it could not run."""
+    parser = repo / GROUPS_PARSER
+    if not parser.is_file():
+        report.error(
+            GROUPS_PARSER,
+            "Missing — `./scripts/install.sh --group` reads groups.toml with this awk program, "
+            "and this validator runs it to check the two agree",
+        )
+        return None
+    try:
+        proc = subprocess.run(
+            ["awk", "-f", str(parser), str(repo / GROUPS_FILE)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError as exc:
+        report.error(
+            GROUPS_PARSER,
+            f"Could not run `awk`: {exc} — awk is already a hard dependency of "
+            "./scripts/install.sh, so it must be available to validate the manifest",
+        )
+        return None
+    if proc.returncode != 0:
+        report.error(
+            GROUPS_PARSER,
+            f"awk exited {proc.returncode} on {GROUPS_FILE}: {proc.stderr.strip() or 'no output'}",
+        )
+        return None
+
+    triples: set[tuple[str, str, str]] = set()
+    for num, line in enumerate(proc.stdout.splitlines(), start=1):
+        fields = line.split("\t")
+        if len(fields) != 3:
+            report.error(GROUPS_PARSER, f"Emitted a non-triple on output line {num}: {line!r}")
+            continue
+        triples.add((fields[0], fields[1], fields[2]))
+    return triples
+
+
+def format_triples(triples: list[tuple[str, str, str]]) -> str:
+    """Render disagreeing entries as tree/group:skill, truncated so a whole-file
+    disagreement does not bury the cause under 85 near-identical lines."""
+    head = triples[:MAX_REPORTED_TRIPLES]
+    shown = ", ".join(f"{tree}/{group}:{skill}" for tree, group, skill in head)
+    if len(triples) > MAX_REPORTED_TRIPLES:
+        shown += f", … ({len(triples) - MAX_REPORTED_TRIPLES} more)"
+    return shown
+
+
+def check_groups_parser_agreement(repo: Path, text: str, data: dict, report: Report) -> None:
+    """groups.toml must mean the same thing to awk as it does to tomllib.
+
+    `./scripts/install.sh` reads this manifest with scripts/parse-groups.awk so
+    it needs no TOML library, which leaves a gap: legal TOML that awk reads
+    differently. The old guard here re-encoded awk's shape rules as regexes and
+    drifted from them — it never checked that `name` and `tree` were *double*
+    quoted, so `name = 'agents'` or `name = 12` validated clean while `--group
+    agents` failed with "no group 'agents'".
+
+    So compare instead of re-derive: run the very same awk file the installer
+    runs, and require its (tree, group, skill) triples to equal tomllib's.
+    Nothing to keep in sync, and the message names the entries that disagree.
+
+    Multi-line strings stay a separate rule. Not every one of them changes awk's
+    output — a multi-line `description` happens to be invisible to it, so the
+    differential would pass — but the parser is line-oriented and any value
+    spanning lines is one edit away from being read as a `name`, `tree` or
+    `skills` line.
+    """
+    if '"""' in text or "'''" in text:
+        report.error(
+            GROUPS_FILE,
+            "Multi-line strings break the installer's line-based awk parser — keep every "
+            "value on one line",
+        )
+
+    from_awk = awk_group_triples(repo, report)
+    if from_awk is None:
+        return
+    from_toml = toml_group_triples(data)
+
+    missed = sorted(from_toml - from_awk)
+    if missed:
+        report.error(
+            GROUPS_FILE,
+            f"{GROUPS_PARSER} does not see {len(missed)} entr"
+            f"{'y' if len(missed) == 1 else 'ies'} that tomllib reads here, so the installer "
+            f"would silently skip {'it' if len(missed) == 1 else 'them'}: {format_triples(missed)}"
+            " — that parser matches double-quoted strings, one skill per line, with nothing "
+            "after `skills = [`",
+        )
+
+    invented = sorted(from_awk - from_toml)
+    if invented:
+        report.error(
+            GROUPS_FILE,
+            f"{GROUPS_PARSER} reads {len(invented)} entr"
+            f"{'y' if len(invented) == 1 else 'ies'} that are not in the parsed TOML, so the "
+            f"installer would act on something this file does not say: {format_triples(invented)}",
+        )
+
+
+def catalogue_entries(section: str) -> set[str]:
+    """Skill names the catalogue *lists*, as opposed to merely mentions.
+
+    A listing is a markdown table cell containing nothing but backticked names,
+    optionally annotated: `adk`, or `gcp-data-pipelines` (router), or a
+    comma-separated run of them. Everything else in the section — prose, and the
+    "What it covers" column — is deliberately out of scope, because a name there
+    is a reference rather than a catalogue entry. Two live cases depend on it:
+
+    - `frontend-design` is named in prose as a pointer to the official Claude
+      Code plugin, and is intentionally in neither tree
+    - the `testing-handbook-skills` sub-skills are listed in prose; they live
+      under the bundle's `skills/`, not as top-level directories
+
+    Both are honest text, and neither is the defect this catches: a dangling
+    table row left behind when a skill is deleted.
+    """
+    listed: set[str] = set()
+    for line in section.splitlines():
+        if not line.lstrip().startswith("|"):
+            continue
+        for cell in line.strip().strip("|").split("|"):
+            names = [n for n in BACKTICKED.findall(cell) if CATALOGUE_NAME_PATTERN.match(n)]
+            if not names:
+                continue
+            remainder = BACKTICKED.sub("", cell)
+            remainder = CELL_ANNOTATION.sub("", remainder)
+            if remainder.strip(" ,\t"):
+                continue  # a prose cell that happens to quote a name
+            listed.update(names)
+    return listed
+
+
+def check_readme_catalogue(repo: Path, report: Report) -> None:
+    """The README catalogue must match the trees in both directions.
+
+    Naming a skill that does not exist is an error: readers install by name, and
+    a dangling entry sends them looking for something that was deleted. Omitting
+    one is a warning — the catalogue is how a skill gets discovered at all, but a
+    missing row breaks nothing.
+
+    Sub-skills inside a plugin bundle count as existing, so the bundle listings
+    resolve without an exemption.
+    """
+    path = repo / README_FILE
+    if not path.is_file():
+        return
+    text = path.read_text(encoding="utf-8")
+
+    start = text.find(README_CATALOGUE_HEADING)
+    if start < 0:
+        report.warn(README_FILE, f"No `{README_CATALOGUE_HEADING}` section to check against")
+        return
+    end = text.find("\n## ", start + len(README_CATALOGUE_HEADING))
+    section = text[start:] if end < 0 else text[start:end]
+
+    installable = installable_skills(repo)
+    known = {skill for skills in installable.values() for skill in skills}
+    known |= {p.parent.name for p in find_skills(repo, TREES)}  # bundle sub-skills
+
+    listed = catalogue_entries(section)
+    for name in sorted(listed - known):
+        report.error(
+            README_FILE,
+            f"Catalogue lists `{name}`, which is not a skill in either tree — remove the entry, "
+            "or restore the skill",
+        )
+
+    mentioned = {n for n in BACKTICKED.findall(section) if CATALOGUE_NAME_PATTERN.match(n)}
+    for tree, skills in sorted(installable.items()):
+        for skill in sorted(skills - mentioned):
+            report.warn(README_FILE, f"{tree}/{skill} is missing from the skill catalogue")
+
+
 def find_skills(repo: Path, trees: tuple[str, ...]) -> list[Path]:
     """Locate every SKILL.md, including those nested inside plugin bundles."""
     found: list[Path] = []
@@ -512,6 +896,8 @@ def main() -> int:
     check_symlinks(repo, report)
     check_artifacts(repo, report)
     check_plugin_manifests(repo, report)
+    check_groups(repo, report)
+    check_readme_catalogue(repo, report)
     check_script_dependencies(repo, report)
     check_deprecated_models(repo, report)
     if "gemini" in trees:

@@ -79,6 +79,13 @@ The `description` field controls when the skill is auto-triggered. Write it as t
   works with no setup (imports guarded by `except ImportError` are exempt)
 - `description` under 500 characters — descriptions load every session, so length is a standing
   context cost, not a per-use one
+- `groups.toml` parses, carries every required key (`name`, `tree`, `description`, `skills`), and
+  places each skill directory in exactly one group for its tree — adding a skill without grouping
+  it fails the build. It also keeps the file in the flat shape `scripts/install.sh`'s awk parser
+  needs: no inline arrays, no multi-line strings
+- The README skill catalogue names no skill absent from both trees (a skill the catalogue omits is
+  a warning). Only table cells that are pure name lists count as catalogue entries, so prose — such
+  as the pointer to the official `frontend-design` plugin — is not scanned
 
 ## Installing skills locally
 
@@ -93,6 +100,8 @@ pulling from an upstream Gemini skills repo.
 
 - **[CODE_STANDARDS.md](CODE_STANDARDS.md) governs tooling, attribution, and git.** Read it first.
 - Install skills with `./scripts/install.sh` — `--list`, `--all`, or named skills
+- A new skill must be added to [`groups.toml`](groups.toml), or CI fails — every skill belongs
+  to exactly one group per tree, and `./scripts/install.sh --group` installs by group
 - Session notes live in [`docs/notes/`](docs/notes/README.md); plans in [`docs/plans/`](docs/plans)
 - Skills follow a TDD-inspired methodology: write pressure-test scenarios, baseline without the skill, write the skill, verify compliance (see `writing-skills/SKILL.md`)
 - When creating or modifying skills, use the `/writing-skills` skill for guidance

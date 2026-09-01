@@ -55,12 +55,26 @@ Claude Code discovers skills **by directory**, not via a config setting. Each sk
 `~/.claude/skills/<name>/SKILL.md` (available everywhere) or
 `<project>/.claude/skills/<name>/SKILL.md` (that project only).
 
+Install **by group** — a group is a coherent slice of the catalogue, and you only pay context for
+what you install:
+
 ```bash
-./scripts/install.sh --list                 # what's available, what's installed
-./scripts/install.sh writing-skills adk     # install a few
-./scripts/install.sh --all                  # install everything
-./scripts/install.sh --all --dry-run        # preview first
-./scripts/install.sh --uninstall --all      # remove
+./scripts/install.sh --list                          # what's available, and its group
+./scripts/install.sh --group agents --group workflow # install by group
+./scripts/install.sh --tree gemini --group gcp       # the Google Cloud family
+```
+
+Groups are declared in [`groups.toml`](groups.toml) and are per-tree; every skill belongs to exactly
+one group for its tree, which CI enforces, so nothing is unreachable via `--group`. See
+[Context cost](#context-cost) for what each group costs per session.
+
+Individual names and everything-at-once still work:
+
+```bash
+./scripts/install.sh writing-skills adk          # name skills directly; mixes with --group
+./scripts/install.sh --all                       # install everything
+./scripts/install.sh --all --dry-run             # preview first
+./scripts/install.sh --uninstall --group agents  # remove; --all and bare names work too
 ```
 
 The installer symlinks, so edits in this repo take effect immediately with no reinstall step. It
@@ -81,8 +95,9 @@ Install the equivalents from `gemini/` into your Gemini CLI configuration direct
 [Gemini CLI docs](https://github.com/google-gemini/gemini-cli) for the current path and layout — its
 extension mechanism differs from Claude Code's.
 
-The 29 Google Cloud skills under `gemini/` came from a Gemini CLI skills bundle and are Apache-2.0
-(see [Provenance](#provenance-and-licence)).
+The 29 Google-published skills under `gemini/` came from a Gemini CLI skills bundle and are
+Apache-2.0 (see [Provenance](#provenance-and-licence)). 26 of them install as `--group gcp`; the
+other three are grouped by topic.
 
 ---
 
@@ -166,8 +181,12 @@ marketplace — this repo previously carried a divergent, older copy, since remo
 
 ### Google Cloud and data *(Gemini only)*
 
-29 Google-published skills. Start at **`gcp-data-pipelines`**, a router that directs you to the
+Google-published, Apache-2.0. Start at **`gcp-data-pipelines`**, a router that directs you to the
 right tool for a given job.
+
+`./scripts/install.sh --tree gemini --group gcp` installs the 26 below. Three other Google-published
+skills are grouped by what they do rather than who wrote them: `managing-python-dependencies` sits
+in `workflow`, `ml-best-practices` in `data`, and `skill-repair` in `meta`.
 
 | Area | Skills |
 |---|---|
@@ -175,8 +194,8 @@ right tool for a given job.
 | Pipelines and orchestration | `gcp-data-pipelines` (router), `gcp-pipeline-orchestration`, `gcp-pipeline-resource-provisioning`, `gcp-dataflow`, `gcp-spark`, `dbt-bigquery`, `dataform-bigquery` |
 | Managed Airflow / Composer | `gcp-managed-airflow-dag-authoring`, `gcp-managed-airflow-migrations`, `gcp-managed-airflow-recommendations`, `gcp-composer-troubleshooting` |
 | Storage and discovery | `google-cloud-storage-basics`, `gcs-security-assessment`, `discovering-gcp-data-assets`, `federate-lakehouse-catalog` |
-| Data quality and apps | `data-autocleaning`, `building-data-apps`, `notebook-guidance`, `ml-best-practices` |
-| Governance and ops | `accidental-data-loss-prevention`, `enforcing-resource-attribution`, `gcloud-auth-verification`, `managing-python-dependencies` |
+| Data quality and apps | `data-autocleaning`, `building-data-apps`, `notebook-guidance` |
+| Governance and ops | `accidental-data-loss-prevention`, `enforcing-resource-attribution`, `gcloud-auth-verification` |
 
 ---
 
@@ -188,14 +207,42 @@ with its size:
 
 | | Skills | Description budget | When one fires |
 |---|---|---|---|
-| `claude/` | 26 top-level | ~1.9k tokens per session | +2.4k tokens median |
+| `claude/` | 26 top-level | ~1.8k tokens per session | +2.4k tokens median |
 | `gemini/` | 55 top-level | ~5.2k tokens per session | +2.0k tokens median |
+
+### What each group costs
+
+Installing by group is how you pay for a slice rather than a whole tree. Standing cost per session,
+by group:
+
+| Group | `claude/` | `gemini/` |
+|---|---|---|
+| `agents` | 4 skills · ~390 tokens | 4 skills · ~380 tokens |
+| `workflow` | 9 skills · ~470 tokens | 9 skills · ~510 tokens |
+| `testing` | 6 skills · ~190 tokens | 6 skills · ~190 tokens |
+| `diagrams` | 2 skills · ~240 tokens | 2 skills · ~240 tokens |
+| `tools` | 5 skills · ~430 tokens | 3 skills · ~310 tokens |
+| `meta` | 2 skills · ~110 tokens | 6 skills · ~290 tokens |
+| `data` | — | 1 skill · ~140 tokens |
+| `gcp` | — | 26 skills · ~3,180 tokens |
+| **whole tree** | 28 skills · ~1.8k | 57 skills · ~5.2k |
+
+**Method**, so the numbers can be re-derived rather than trusted: for each group in `groups.toml`,
+sum the `description` field from every member skill's `SKILL.md` frontmatter and divide the
+character count by 4. They move whenever a description does. The counts here are group membership,
+which is why they run two ahead of the top-level counts above: the `testing` groups list six skills
+but contribute four descriptions, because `property-based-testing` and `testing-handbook-skills` are
+plugin bundles with no top-level `SKILL.md` and so cost nothing at session start.
+
+`gcp` alone is **61% of the Gemini tree's standing cost** — the argument for installing it only when
+the work is Google Cloud work. On the Claude side, `--group agents --group workflow` costs ~860
+tokens against ~1.8k for `--all`.
 
 Two practical consequences:
 
-- **Install what you use.** `./scripts/install.sh --list` then name the skills you want, rather than
-  `--all`, if session context is tight. Installing the whole Gemini tree costs ~5k tokens before you
-  type anything.
+- **Install the groups you use.** `./scripts/install.sh --list` shows each skill's group and how much
+  of each group is installed; `--group` then takes whole slices. Installing the whole Gemini tree
+  costs ~5.2k tokens before you type anything.
 - **Keep descriptions tight.** The validator warns above 500 characters. Ten skills currently exceed
   it, all vendored from Google — left at upstream's wording deliberately, since editing them
   complicates re-sync.
@@ -208,6 +255,7 @@ Bodies are capped at 500 lines for the same reason: `SKILL.md` loads in full, so
 ```
 claude/                     28 skills for Claude Code
 gemini/                     57 skills for Gemini CLI
+groups.toml                 installable groups, per tree — drives `install.sh --group`
 scripts/validate-skills.py  repo-wide validator (PEP 723; run with uv)
 docs/plans/                 implementation plans for larger changes
 .github/workflows/          CI
@@ -261,6 +309,8 @@ Runs in CI on every push and pull request, alongside the bundle-specific validat
 | No Claude terminology under `gemini/` | That tree is a port, not a copy |
 | No dangling symlinks, no committed build artifacts | Both have shipped broken skills before |
 | Correct plugin manifest per tree | `.claude-plugin/` vs `.gemini-plugin/` |
+| `groups.toml` well-formed, complete, and disjoint | Every skill in exactly one group per tree, or `--group` and `--list` quietly omit it. The installer parses it with `scripts/parse-groups.awk`, so this runs that same file and requires its output to match `tomllib`'s — legal TOML the installer would read differently fails here rather than silently there |
+| The catalogue names no skill absent from both trees | Readers install by name; a dangling row sends them after something that was deleted |
 
 **Warnings** — surfaced, don't fail:
 
@@ -269,6 +319,7 @@ Runs in CI on every push and pull request, alongside the bundle-specific validat
 - Helper scripts importing undeclared third-party packages
 - Frontmatter keys the harness ignores (`when_to_use`, `tools`)
 - Relative links that don't resolve
+- A skill that exists but the catalogue never mentions — undiscoverable, but nothing breaks
 - Stale entries in the Gemini-purity allowlist, so exemptions don't outlive their reason
 
 Run it before committing. It is also the guard against re-syncing upstream content that reintroduces
