@@ -19,6 +19,7 @@ uv run scripts/validate-skills.py     # 117 skills, 0 errors
 - [Repository layout](#repository-layout)
 - [Validation](#validation)
 - [Contributing a skill](#contributing-a-skill)
+- [Working with agents on this repo](#working-with-agents-on-this-repo)
 - [Provenance and licence](#provenance-and-licence)
 
 ---
@@ -362,6 +363,67 @@ already-fixed defects — run `--tree gemini` after pulling from any upstream Ge
 
 Full authoring guidance lives in `claude/writing-skills/`, including a vendored copy of Anthropic's
 skill-authoring best practices.
+
+---
+
+## Working with agents on this repo
+
+Much of this repo was built by dispatching agents per task, with a separate reviewer verifying each
+one. The single practice that mattered most, stated as a rule:
+
+> **A report is a claim, not evidence.** Check it against the tree before acting on it — including
+> when the claim comes from whoever is directing the work.
+
+That cuts in every direction, and did.
+
+### The director's premises were wrong three times
+
+Each was a confident, plausible instruction that would have corrupted the work if followed:
+
+| Premise given | Reality | Cost if unchecked |
+|---|---|---|
+| "Collapse description whitespace" | Ten Gemini skills use YAML `\|` block scalars whose newlines genuinely occupy context | Every generated token figure wrong, low by 20–30 |
+| "…matching how the existing validator normalises them" | The validator only `.strip()`s. There were **zero** whitespace-collapsing idioms in the file | The wrong method would have looked sanctioned |
+| "The README currently says `~1.9k`" | Already corrected to `~1.8k` two commits earlier | An agent "fixing" something already right |
+
+The first two went into the module every other number derives from. Followed rather than checked,
+the generator would have confidently rewritten *correct* published figures into wrong ones — and CI
+would have gone green, because the generator and the validator would have shared the same wrong
+assumption.
+
+The agent grepped for the idiom, found none, checked the block scalars, and reported back with the
+evidence instead of complying.
+
+### Reviewers were wrong too, in the other direction
+
+Reviewing is not automatically more reliable than implementing:
+
+- A reviewer flagged a `shellcheck` result as unsubstantiated after `command -v shellcheck` found
+  nothing. The tool had been run through `uvx`, which does not put a binary on `PATH`. The original
+  claim was true.
+- An agent reported `CLAUDE.md` as stale, listing skills it said were wrongly documented. Those
+  entries had been removed several merges earlier; zero occurrences remained. It had reconstructed
+  a state that no longer existed.
+- An implementer concluded a published figure was underivable after trying four methods. A reviewer
+  swept the 2×2×2 grid of {median, mean} × {full text, body} × {top-level, all files} and found the
+  one variant that reproduced it — then showed it was the *only* one, so the match was not luck.
+
+### What actually made it work
+
+- **Verify the claim, not the confidence.** Every correction above came from someone running the
+  thing rather than reading about it. Length and polish of a report predicted nothing.
+- **Test the fix in both directions.** A check that stops erroring might be fixed or might be
+  broken. Every guard here was tested to fire on bad input *and* stay quiet on good.
+- **Say what you could not confirm.** One agent refused to reverse-engineer a formula to fit a
+  number it could not derive, and said so. That honest gap was more useful than a plausible guess
+  would have been, and a reviewer closed it later.
+- **Distrust your own test before the feature.** Two apparent failures here were bad tests — a
+  sandbox carrying a stray `__pycache__`, and a probe missing a word the pattern required. Both
+  looked like broken features.
+
+Fuller notes, including the specific traps, are in
+[`docs/notes/collaboration.md`](docs/notes/collaboration.md) and
+[`docs/notes/tooling-gotchas.md`](docs/notes/tooling-gotchas.md).
 
 ---
 
