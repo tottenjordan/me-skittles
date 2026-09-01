@@ -1,0 +1,306 @@
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["pyyaml>=6.0"]
+# ///
+"""Single source of truth for every number the documentation is allowed to state.
+
+The README, CLAUDE.md and GEMINI.md quote counts — 117 skills, 28 and 57 per
+tree, 29 Google-published, per-group token budgets. Each of those was hand
+counted once and then drifted, because nothing recomputed them. This module is
+the one place they are derived; the docs generator writes from it and the
+validator checks against it, so the two can disagree with reality but never
+with each other.
+
+`facts(repo)` returns a plain dict. To publish a new number, add a key here and
+both consumers see it.
+
+Import-only: no CLI, and so no shebang and no exec bit. The PEP 723 block is
+kept anyway, so `uv run scripts/repo_facts.py` resolves pyyaml if anyone does
+run it, and so the dependency is declared where CODE_STANDARDS.md expects it.
+
+Deliberately tolerant: unreadable or malformed frontmatter contributes nothing
+rather than raising. Judging a skill malformed is scripts/validate-skills.py's
+job, and a counter that crashes on the file the validator exists to report is
+useless. Nothing here prints, and importing it runs no work.
+
+The token estimate
+------------------
+README.md documents the method: for each group in `groups.toml`, sum the
+`description` field from every member skill's `SKILL.md` frontmatter and divide
+the character count by 4. Two details it leaves implicit, both recovered by
+reproducing all fourteen of its published figures:
+
+- **Published figures are rounded to the nearest 10 tokens, half away from
+  zero.** `gemini.tools` is exactly 1220 chars — 305.0 tokens — and the README
+  says ~310. Python's `round()` is half-to-even and would say 300, so this uses
+  `Decimal` with `ROUND_HALF_UP` rather than the builtin.
+- **Whitespace inside a description counts.** Collapsing runs of whitespace
+  first understates `gemini.gcp` by 20 tokens and `gemini.data` by 10, because
+  several Google-published skills write `description:` as a literal `|` block
+  whose newlines and indentation survive YAML parsing. Those characters really
+  are loaded into context, so they really are part of the cost. Only leading
+  and trailing whitespace is stripped, matching how validate-skills.py measures
+  description length.
+
+Both `tokens` (the estimate) and `tokens_rounded` (the figure docs quote) are
+computed from the character count directly. Deriving the second from the first
+would round twice and can land 10 tokens off.
+
+Chars-per-token is a crude constant, not a tokenizer. It is the documented
+method, it needs no dependency, and it is stable — the numbers are a budget for
+comparing groups against each other, not an invoice.
+"""
+
+from __future__ import annotations
+
+from decimal import ROUND_HALF_UP, Decimal
+from pathlib import Path
+
+# `tomllib` is stdlib from 3.11, which the PEP 723 header above requires. ruff
+# does not read that header, so under its default target version it sorts the
+# import here rather than into the stdlib block above; keep it here so
+# `uvx ruff check` stays clean without a config file. Same reasoning as
+# scripts/validate-skills.py.
+import tomllib
+import yaml
+
+# This module is the leaf: consumers import it, it imports none of them.
+# scripts/validate-skills.py defines several of the constants and helpers below
+# for itself; it should import them from here instead, but the dependency has to
+# stay one-way or the two form an import cycle.
+TREES = ("claude", "gemini")
+SKILL_FILE = "SKILL.md"
+GROUPS_FILE = "groups.toml"
+
+# Descriptions load every session; 4 chars per token is the estimate README.md
+# documents, and 10 is the granularity it publishes at.
+CHARS_PER_TOKEN = 4
+TOKEN_STEP = 10
+
+# Descriptions above this are a standing context cost worth naming. Must match
+# WARN_DESCRIPTION_LENGTH in scripts/validate-skills.py — the README quotes how
+# many skills exceed it, so the count and the warning have to mean one thing.
+WARN_DESCRIPTION_LENGTH = 500
+
+# `metadata.publisher` marking a skill as vendored from Google rather than
+# written here. It is what distinguishes upstream content, which ATTRIBUTION.md
+# and CODE_STANDARDS.md say to leave alone, from local content.
+GOOGLE_PUBLISHER = "google"
+
+
+def extract_frontmatter(content: str) -> dict:
+    """Parse a SKILL.md's YAML frontmatter, or return {} if it has none.
+
+    Same shape rules as scripts/validate-skills.py's function of this name, minus
+    the error reporting: absent, unclosed, unparseable and non-mapping
+    frontmatter all count as no facts to contribute.
+    """
+    lines = content.split("\n")
+    if not lines or lines[0].strip() != "---":
+        return {}
+    end = next((i for i, line in enumerate(lines[1:], start=1) if line.strip() == "---"), None)
+    if end is None:
+        return {}
+    try:
+        parsed = yaml.safe_load("\n".join(lines[1:end]))
+    except yaml.YAMLError:
+        return {}
+    return parsed if isinstance(parsed, dict) else {}
+
+
+def frontmatter_of(skill_file: Path) -> dict:
+    """Frontmatter of a SKILL.md on disk; {} if it is missing or unreadable."""
+    try:
+        return extract_frontmatter(skill_file.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError):
+        return {}
+
+
+def description_of(skill_file: Path) -> str:
+    """A skill's description exactly as it is loaded, stripped at the ends only.
+
+    Internal whitespace is preserved: a literal `|` block scalar's newlines and
+    indentation are characters the session pays for. See the module docstring.
+    """
+    description = frontmatter_of(skill_file).get("description")
+    return str(description).strip() if description else ""
+
+
+def publisher_of(skill_file: Path) -> str | None:
+    """`metadata.publisher`, or None if the skill does not declare one."""
+    metadata = frontmatter_of(skill_file).get("metadata")
+    return metadata.get("publisher") if isinstance(metadata, dict) else None
+
+
+def find_skills(repo: Path, trees: tuple[str, ...] = TREES) -> list[Path]:
+    """Every SKILL.md, including those nested inside plugin bundles."""
+    found: list[Path] = []
+    for tree in trees:
+        root = repo / tree
+        if root.is_dir():
+            found.extend(root.rglob(SKILL_FILE))
+    return sorted(found)
+
+
+def installable_skills(repo: Path, trees: tuple[str, ...] = TREES) -> dict[str, list[str]]:
+    """Top-level skill directory names per tree — exactly what install.sh offers.
+
+    This is the count the docs mean by "skills in the tree". It differs from
+    len(find_skills()) in both directions: plugin bundles are one directory but
+    many SKILL.md files, and a bundle has no SKILL.md of its own.
+    """
+    return {
+        tree: sorted(
+            path.name
+            for path in (repo / tree).iterdir()
+            if path.is_dir() and not path.name.startswith(".")
+        )
+        for tree in trees
+        if (repo / tree).is_dir()
+    }
+
+
+def estimate_tokens(chars: int, step: int = 1) -> int:
+    """Estimate tokens from a character count, rounded half-up to `step`.
+
+    Half-up rather than the builtin `round()`, which is half-to-even: at exactly
+    305.0 tokens those two disagree, and the README's figure is the half-up one.
+    """
+    tokens = Decimal(chars) / CHARS_PER_TOKEN
+    return int((tokens / step).quantize(Decimal(1), rounding=ROUND_HALF_UP)) * step
+
+
+def format_k(tokens: int) -> str:
+    """Render a token count the way the README quotes tree totals: `1.8k`."""
+    return f"{(Decimal(tokens) / 1000).quantize(Decimal('0.1'), rounding=ROUND_HALF_UP)}k"
+
+
+def load_groups(repo: Path) -> list[dict]:
+    """The [[group]] entries of groups.toml, or [] if it is missing or broken.
+
+    Well-formedness is checked by validate-skills.py's `check_groups`; entries
+    too malformed to describe a group are skipped rather than reported here.
+    """
+    path = repo / GROUPS_FILE
+    try:
+        data = tomllib.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, tomllib.TOMLDecodeError):
+        return []
+    entries = data.get("group")
+    if not isinstance(entries, list):
+        return []
+    return [
+        entry
+        for entry in entries
+        if isinstance(entry, dict)
+        and isinstance(entry.get("name"), str)
+        and isinstance(entry.get("tree"), str)
+        and isinstance(entry.get("skills"), list)
+    ]
+
+
+def group_facts(repo: Path) -> dict[tuple[str, str], dict]:
+    """Per-(tree, group) membership and description budget, keyed as in groups.toml.
+
+    `skill_count` is membership; `described_count` is how many of those members
+    contribute a description. They differ by exactly the plugin bundles, which
+    are directories with no top-level SKILL.md and so cost nothing at session
+    start — the reason group totals run ahead of the top-level skill counts.
+    """
+    facts_by_group: dict[tuple[str, str], dict] = {}
+    for entry in load_groups(repo):
+        tree, name = entry["tree"], entry["name"]
+        skills = [skill for skill in entry["skills"] if isinstance(skill, str)]
+        described: list[str] = []
+        undescribed: list[str] = []
+        chars = 0
+        for skill in skills:
+            text = description_of(repo / tree / skill / SKILL_FILE)
+            if text:
+                described.append(skill)
+                chars += len(text)
+            else:
+                undescribed.append(skill)
+        facts_by_group[(tree, name)] = {
+            "tree": tree,
+            "name": name,
+            "description": entry.get("description", ""),
+            "skills": skills,
+            "skill_count": len(skills),
+            "described": described,
+            "described_count": len(described),
+            "undescribed": undescribed,
+            "description_chars": chars,
+            "tokens": estimate_tokens(chars),
+            "tokens_rounded": estimate_tokens(chars, TOKEN_STEP),
+        }
+    return facts_by_group
+
+
+def facts(repo: Path) -> dict:
+    """Every number and membership set the docs are allowed to state.
+
+    Keys, all derived from the working tree at `repo`:
+
+    - `skills_total`, `skill_files_by_tree` — every SKILL.md, bundles included
+    - `skills_by_tree`, `skill_names` — top-level skill directories, what
+      install.sh offers and what the docs mean by "skills in the tree"
+    - `described_by_tree`, `bundles` — how many of those directories carry a
+      top-level SKILL.md, and which do not
+    - `shared`, `claude_only`, `gemini_only` — cross-tree membership
+    - `google_published` — vendored from Google, per `metadata.publisher`
+    - `description_chars_by_tree`, `tokens_by_tree`, `tokens_k_by_tree` —
+      standing per-session cost of a whole tree
+    - `oversized_descriptions` — skills above WARN_DESCRIPTION_LENGTH chars
+    - `groups` — per-(tree, group) facts; see `group_facts`
+    """
+    repo = Path(repo)
+    names = installable_skills(repo)
+    # Keyed off `names` rather than TREES so every per-tree dict below has the
+    # same keys: a caller iterating one and indexing another cannot KeyError.
+    skill_files = {tree: find_skills(repo, (tree,)) for tree in names}
+    every_skill = [path for paths in skill_files.values() for path in paths]
+
+    described_by_tree: dict[str, int] = {}
+    bundles: dict[str, list[str]] = {}
+    description_chars: dict[str, int] = {}
+    for tree, tree_names in names.items():
+        top_level = {name: repo / tree / name / SKILL_FILE for name in tree_names}
+        present = {name: path for name, path in top_level.items() if path.is_file()}
+        described_by_tree[tree] = len(present)
+        bundles[tree] = sorted(set(top_level) - set(present))
+        description_chars[tree] = sum(len(description_of(path)) for path in present.values())
+
+    claude = set(names.get("claude", []))
+    gemini = set(names.get("gemini", []))
+    google = sorted(
+        path.parent.name for path in every_skill if publisher_of(path) == GOOGLE_PUBLISHER
+    )
+    oversized = sorted(
+        path.relative_to(repo).as_posix()
+        for path in every_skill
+        if len(description_of(path)) > WARN_DESCRIPTION_LENGTH
+    )
+
+    return {
+        "skills_total": len(every_skill),
+        "skill_files_by_tree": {tree: len(paths) for tree, paths in skill_files.items()},
+        "skills_by_tree": {tree: len(tree_names) for tree, tree_names in names.items()},
+        "skill_names": names,
+        "described_by_tree": described_by_tree,
+        "bundles": bundles,
+        "shared": sorted(claude & gemini),
+        "claude_only": sorted(claude - gemini),
+        "gemini_only": sorted(gemini - claude),
+        "google_published": google,
+        "description_chars_by_tree": description_chars,
+        "tokens_by_tree": {
+            tree: estimate_tokens(chars) for tree, chars in description_chars.items()
+        },
+        "tokens_k_by_tree": {
+            tree: format_k(estimate_tokens(chars)) for tree, chars in description_chars.items()
+        },
+        "oversized_descriptions": oversized,
+        "description_warn_limit": WARN_DESCRIPTION_LENGTH,
+        "groups": group_facts(repo),
+    }
