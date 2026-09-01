@@ -100,6 +100,8 @@ pulling from an upstream Gemini skills repo.
 
 - **[CODE_STANDARDS.md](CODE_STANDARDS.md) governs tooling, attribution, and git.** Read it first.
 - Install skills with `./scripts/install.sh` — `--list`, `--all`, or named skills
+- A new skill must be added to [`groups.toml`](groups.toml), or CI fails — every skill belongs
+  to exactly one group per tree, and `./scripts/install.sh --group` installs by group
 - Session notes live in [`docs/notes/`](docs/notes/README.md); plans in [`docs/plans/`](docs/plans)
 - Skills follow a TDD-inspired methodology: write pressure-test scenarios, baseline without the skill, write the skill, verify compliance (see `writing-skills/SKILL.md`)
 - When creating or modifying skills, use the `/writing-skills` skill for guidance

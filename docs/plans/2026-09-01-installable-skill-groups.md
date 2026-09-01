@@ -24,8 +24,8 @@ The Gemini figure is dominated by the Google Cloud family (26 skills after the T
 needs `gcs-security-assessment` loaded, but `install.sh --all` gives them no way to say so — the
 installer takes `--all` or an explicit list of 30-odd names.
 
-**Status:** Tasks 1–2 landed on `feat/install-groups-flag`; Tasks 3–4 in progress (dispatched
-together, since both add checks to `scripts/validate-skills.py`); Task 5 pending.
+**Status:** all five tasks complete on `feat/install-groups-flag`. Tasks 3–4 were dispatched
+together, since both add checks to `scripts/validate-skills.py`.
 
 **Decisions taken** (confirmed with the user):
 
@@ -112,7 +112,7 @@ silently installing nothing.
 
 Also add `--group` to the usage block, which `--help` prints from the file header.
 
-## Task 3: Validate the manifest — IN PROGRESS
+## Task 3: Validate the manifest — DONE
 
 **File:** Modify `scripts/validate-skills.py`
 
@@ -132,7 +132,7 @@ Errors:
 This is what makes the manifest safe to trust: adding a skill without grouping it fails CI, so the
 manifest cannot rot the way the README did.
 
-## Task 4: Validate the README against reality — IN PROGRESS
+## Task 4: Validate the README against reality — DONE
 
 **File:** Modify `scripts/validate-skills.py`
 
@@ -146,7 +146,7 @@ Scope the scan to the catalogue section so incidental prose mentions do not trip
 intentional exceptions must not fire: `frontend-design` (named as a pointer to the official plugin)
 and skill names inside the bundle listing.
 
-## Task 5: Document
+## Task 5: Document — DONE
 
 **Files:** Modify `README.md`, `CLAUDE.md`
 
@@ -154,7 +154,7 @@ In the README's **Setup** and **Context cost** sections, lead with group install
 recommendation:
 
 ```bash
-./scripts/install.sh --group agents --group workflow    # ~1.2k tokens
+./scripts/install.sh --group agents --group workflow    # ~860 tokens (measured)
 ./scripts/install.sh --tree gemini --group gcp          # the Google Cloud family, on demand
 ```
 

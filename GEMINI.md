@@ -110,6 +110,8 @@ repository.
 - Test with `testing-skills-with-subagents` before deployment
 - Install skills with `./scripts/install.sh` — `--list`, `--all`, or named skills, with
   `--tree gemini` for this tree
+- A new skill must be added to [`groups.toml`](groups.toml), or CI fails — every skill belongs
+  to exactly one group per tree, and `./scripts/install.sh --group` installs by group
 - The `playwright-skill` directory is a Node.js package — run `npm install` there if working on
   browser automation
 - Bundle-specific validation: `uv run scripts/validate-skills.py` from `gemini/testing-handbook-skills/`
