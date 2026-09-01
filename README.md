@@ -95,8 +95,9 @@ Install the equivalents from `gemini/` into your Gemini CLI configuration direct
 [Gemini CLI docs](https://github.com/google-gemini/gemini-cli) for the current path and layout — its
 extension mechanism differs from Claude Code's.
 
-The 29 Google Cloud skills under `gemini/` came from a Gemini CLI skills bundle and are Apache-2.0
-(see [Provenance](#provenance-and-licence)).
+The 29 Google-published skills under `gemini/` came from a Gemini CLI skills bundle and are
+Apache-2.0 (see [Provenance](#provenance-and-licence)). 26 of them install as `--group gcp`; the
+other three are grouped by topic.
 
 ---
 
@@ -180,8 +181,12 @@ marketplace — this repo previously carried a divergent, older copy, since remo
 
 ### Google Cloud and data *(Gemini only)*
 
-29 Google-published skills. Start at **`gcp-data-pipelines`**, a router that directs you to the
+Google-published, Apache-2.0. Start at **`gcp-data-pipelines`**, a router that directs you to the
 right tool for a given job.
+
+`./scripts/install.sh --tree gemini --group gcp` installs the 26 below. Three other Google-published
+skills are grouped by what they do rather than who wrote them: `managing-python-dependencies` sits
+in `workflow`, `ml-best-practices` in `data`, and `skill-repair` in `meta`.
 
 | Area | Skills |
 |---|---|
@@ -189,8 +194,8 @@ right tool for a given job.
 | Pipelines and orchestration | `gcp-data-pipelines` (router), `gcp-pipeline-orchestration`, `gcp-pipeline-resource-provisioning`, `gcp-dataflow`, `gcp-spark`, `dbt-bigquery`, `dataform-bigquery` |
 | Managed Airflow / Composer | `gcp-managed-airflow-dag-authoring`, `gcp-managed-airflow-migrations`, `gcp-managed-airflow-recommendations`, `gcp-composer-troubleshooting` |
 | Storage and discovery | `google-cloud-storage-basics`, `gcs-security-assessment`, `discovering-gcp-data-assets`, `federate-lakehouse-catalog` |
-| Data quality and apps | `data-autocleaning`, `building-data-apps`, `notebook-guidance`, `ml-best-practices` |
-| Governance and ops | `accidental-data-loss-prevention`, `enforcing-resource-attribution`, `gcloud-auth-verification`, `managing-python-dependencies` |
+| Data quality and apps | `data-autocleaning`, `building-data-apps`, `notebook-guidance` |
+| Governance and ops | `accidental-data-loss-prevention`, `enforcing-resource-attribution`, `gcloud-auth-verification` |
 
 ---
 
