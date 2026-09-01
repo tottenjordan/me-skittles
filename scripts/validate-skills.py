@@ -328,13 +328,43 @@ def check_symlinks(repo: Path, report: Report) -> None:
             )
 
 
+def tracked_paths(repo: Path) -> set[str] | None:
+    """Every path git tracks, or None if git cannot be consulted."""
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(repo), "ls-files"],
+            capture_output=True, text=True, check=True, timeout=30,
+        ).stdout
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return set(out.splitlines())
+
+
 def check_artifacts(repo: Path, report: Report) -> None:
-    """Build artifacts should never be committed."""
+    """Build artifacts should never be *committed*.
+
+    Only tracked paths count. `__pycache__` is gitignored, so merely importing
+    a script in this directory used to fail validation with "Committed build
+    artifact" for a file git had never seen — a false positive whose message
+    sent you looking for a commit that did not exist.
+
+    If git cannot be consulted, fall back to flagging every artifact: better a
+    false positive than silently missing a real one.
+    """
+    tracked = tracked_paths(repo)
     for pattern in ARTIFACT_GLOBS:
         for path in sorted(repo.glob(pattern)):
             if ".git" in path.parts:
                 continue
-            report.error(path.relative_to(repo), "Committed build artifact")
+            rel = path.relative_to(repo)
+            if tracked is not None and rel.as_posix() not in tracked:
+                continue  # local build detritus, not committed
+            report.error(
+                rel,
+                "Committed build artifact"
+                if tracked is not None
+                else "Build artifact (could not consult git to confirm it is tracked)",
+            )
 
 
 def check_gemini_purity(repo: Path, report: Report) -> None:

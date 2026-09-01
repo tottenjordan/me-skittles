@@ -129,3 +129,41 @@ If A's commits appear in B, the retarget resolved against the wrong base.
 Running a standalone PEP 723 script from within a directory that has its own project metadata can
 make `uv` try to resolve the project instead of the script's inline dependencies. `uv run --no-project
 script.py` forces the script's own metadata to win.
+
+---
+
+## `GROUPS` is a bash special variable
+
+Naming an array `GROUPS` in a bash script silently collides with the shell's own variable holding
+the invoking user's group IDs. Worse, `GROUPS=()` does **not** clear it:
+
+```bash
+GROUPS=()          # no effect
+echo "${GROUPS[@]}"   # 1000 4 27 ...
+```
+
+Hit while writing `scripts/install.sh`, where it made the installer try to install a group called
+`1000`. Renamed to `GROUP_ARGS`. `BASH_*`, `PIPESTATUS`, `FUNCNAME` and `SECONDS` are the same
+hazard; prefix script arrays if in doubt.
+
+---
+
+## A gitignored build artifact used to fail validation
+
+`scripts/validate-skills.py` flags committed build artifacts. It used to flag **any** artifact on
+disk, so simply importing a script from `scripts/` — which creates `scripts/__pycache__` — made
+validation fail with:
+
+```
+ERROR  Committed build artifact
+```
+
+for a path git had never seen. `__pycache__` is gitignored, so `git status` stayed clean while
+validation failed, and the message sent you looking for a commit that did not exist.
+
+**Fixed:** `check_artifacts` now consults `git ls-files` and only errors on genuinely tracked paths.
+If git cannot be consulted it falls back to flagging everything, with a message saying so — a false
+positive beats silently missing a real one.
+
+The general lesson: a check that reports on the *working tree* while claiming something about
+*history* will eventually lie. Say which one you mean.
