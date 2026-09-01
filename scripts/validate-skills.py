@@ -188,7 +188,17 @@ MAX_REPORTED_TRIPLES = 12
 # entries for skills that did not exist -- four dangling `adk-*` rows survived
 # the removal of the skills they named.
 README_FILE = "README.md"
-README_CATALOGUE_HEADING = "## Skill catalogue"
+
+# The catalogue section is found by its *label*, not a literal heading string, so
+# decorating headings (an emoji prefix, a trailing note) cannot silently unhook
+# the check. Encoding the decoration into the constant instead would mean every
+# cosmetic README edit is also a code edit — and a missed one fails open.
+README_CATALOGUE_LABEL = "skill catalogue"
+README_CATALOGUE_HEADING = "## Skill catalogue"   # for messages only
+
+# Leading decoration on a heading: emoji, symbols, whitespace. Stripped before a
+# heading is matched to CATALOGUE_SECTION_GROUPS.
+HEADING_DECORATION = re.compile(r"^[^0-9A-Za-z`]+")
 BACKTICKED = re.compile(r"`([^`\n]+)`")
 
 # A parenthesised annotation on a catalogue entry, e.g. `gcp-data-pipelines`
@@ -876,7 +886,8 @@ def section_label(heading: str) -> str:
     CATALOGUE_SECTION_GROUPS survives an edit to the descriptive tail — which is
     the part of a heading that actually gets rewritten.
     """
-    return " ".join(SECTION_LABEL_SPLIT.split(heading, maxsplit=1)[0].split()).lower()
+    stem = SECTION_LABEL_SPLIT.split(heading, maxsplit=1)[0]
+    return " ".join(HEADING_DECORATION.sub("", stem).split()).lower()
 
 
 def check_catalogue_membership(repo: Path, section: str, report: Report) -> None:
@@ -947,11 +958,15 @@ def check_readme_catalogue(repo: Path, report: Report) -> None:
         return
     text = path.read_text(encoding="utf-8")
 
-    start = text.find(README_CATALOGUE_HEADING)
+    start = -1
+    for m in re.finditer(r"^## (.+)$", text, re.MULTILINE):
+        if section_label(m.group(1)) == README_CATALOGUE_LABEL:
+            start = m.start()
+            break
     if start < 0:
         report.warn(README_FILE, f"No `{README_CATALOGUE_HEADING}` section to check against")
         return
-    end = text.find("\n## ", start + len(README_CATALOGUE_HEADING))
+    end = text.find("\n## ", start + 3)
     section = text[start:] if end < 0 else text[start:end]
 
     check_catalogue_membership(repo, section, report)

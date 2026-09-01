@@ -1,30 +1,51 @@
-# me-skittles
+<div align="center">
 
-Agent skills for [Claude Code](https://claude.ai/code) and [Gemini CLI](https://github.com/google-gemini/gemini-cli) — reusable, prompt-based tools that teach a coding agent a specific capability, from ADK agent development to BigQuery analytics to browser automation.
+<img src="docs/imgs/skittle_banner.jpeg" alt="me-skittles — agent skills for Claude Code and Gemini CLI" width="100%" />
 
-**117 skills** across two trees, counting every `SKILL.md` — a plugin bundle holds several apiece. They install as directories: `claude/` (28) and `gemini/` (57), of which 24 exist in both. Every skill is validated in CI.
+# 🍬 me-skittles 🤖
+
+<!-- BEGIN GENERATED: badges — edits here are overwritten by scripts/sync-docs.py -->
+
+<p align="center">
+  <img src="https://img.shields.io/badge/skills-117-8A2BE2?style=flat-square" alt="117 skills" />
+  <img src="https://img.shields.io/badge/Claude%20Code-28%20skills-D97757?style=flat-square" alt="Claude Code: 28 skills" />
+  <img src="https://img.shields.io/badge/Gemini%20CLI-57%20skills-4285F4?style=flat-square" alt="Gemini CLI: 57 skills" />
+  <img src="https://img.shields.io/badge/python-3.11%2B-3776AB?style=flat-square" alt="Python 3.11+" />
+  <img src="https://img.shields.io/badge/packaging-uv-DE5FE9?style=flat-square" alt="packaging: uv" />
+  <img src="https://img.shields.io/badge/lint-ruff-D7FF64?style=flat-square" alt="lint: ruff" />
+  <img src="https://img.shields.io/badge/license-Apache%202.0-green?style=flat-square" alt="license: Apache 2.0" />
+</p>
+
+<!-- END GENERATED: badges -->
+
+</div>
+
+> Agent skills for **[Claude Code](https://claude.ai/code)** and **[Gemini CLI](https://github.com/google-gemini/gemini-cli)** — reusable, prompt-based tools that teach a coding agent a specific capability, from ADK agent development to BigQuery analytics to browser automation.
+
+**117 skills** across two trees, counting every `SKILL.md` — a plugin bundle holds several apiece. They install as directories: `claude/` (28) and `gemini/` (57), of which 24 exist in both. Install a coherent slice with `--group` rather than all-or-nothing, and every skill is validated in CI.
 
 ```bash
-uv run scripts/validate-skills.py     # 117 skills, 0 errors
+./scripts/install.sh --group agents --group workflow   # install by group
+uv run scripts/validate-skills.py                      # 117 skills, 0 errors
 ```
 
 ---
 
-## Contents
+## 📖 Contents
 
-- [How skills work](#how-skills-work)
-- [Setup](#setup)
-- [Skill catalogue](#skill-catalogue)
-- [Context cost](#context-cost)
-- [Repository layout](#repository-layout)
-- [Validation](#validation)
-- [Contributing a skill](#contributing-a-skill)
-- [Working with agents on this repo](#working-with-agents-on-this-repo)
-- [Provenance and licence](#provenance-and-licence)
+- [How skills work](#-how-skills-work)
+- [Setup](#-setup)
+- [Skill catalogue](#-skill-catalogue)
+- [Context cost](#-context-cost)
+- [Repository layout](#-repository-layout)
+- [Validation](#-validation)
+- [Contributing a skill](#-contributing-a-skill)
+- [Working with agents on this repo](#-working-with-agents-on-this-repo)
+- [Provenance and licence](#-provenance-and-licence)
 
 ---
 
-## How skills work
+## 🧠 How skills work
 
 A skill is a directory containing a `SKILL.md` with YAML frontmatter:
 
@@ -48,7 +69,7 @@ Both rules are enforced by the validator, not left to reviewer discipline.
 
 ---
 
-## Setup
+## 🚀 Setup
 
 ### Claude Code
 
@@ -67,7 +88,7 @@ what you install:
 
 Groups are declared in [`groups.toml`](groups.toml) and are per-tree; every skill belongs to exactly
 one group for its tree, which CI enforces, so nothing is unreachable via `--group`. See
-[Context cost](#context-cost) for what each group costs per session.
+[Context cost](#-context-cost) for what each group costs per session.
 
 Individual names and everything-at-once still work:
 
@@ -97,12 +118,12 @@ Install the equivalents from `gemini/` into your Gemini CLI configuration direct
 extension mechanism differs from Claude Code's.
 
 The 29 Google-published skills under `gemini/` came from a Gemini CLI skills bundle and are
-Apache-2.0 (see [Provenance](#provenance-and-licence)). 26 of them install as `--group gcp`; the
+Apache-2.0 (see [Provenance](#-provenance-and-licence)). 26 of them install as `--group gcp`; the
 other three are grouped by topic.
 
 ---
 
-## Skill catalogue
+## 📚 Skill catalogue
 
 ### Agents — ADK, A2A, Agent Engine *(both trees)*
 
@@ -200,7 +221,7 @@ in `workflow`, `ml-best-practices` in `data`, and `skill-repair` in `meta`.
 
 ---
 
-## Context cost
+## ⚖️ Context cost
 
 Every skill's `description` is loaded into context at the start of **every session**, whether or not
 the skill fires. Bodies are loaded only on trigger. So the catalogue has a fixed cost that grows
@@ -268,7 +289,7 @@ Two practical consequences:
 Bodies are capped at 500 lines for the same reason: `SKILL.md` loads in full, so detail belongs in
 `references/`, which loads only when the agent follows the link.
 
-## Repository layout
+## 🗂️ Repository layout
 
 ```
 claude/                     28 skills for Claude Code
@@ -304,7 +325,7 @@ undoes the port.
 
 ---
 
-## Validation
+## ✅ Validation
 
 ```bash
 uv run scripts/validate-skills.py              # everything
@@ -345,7 +366,7 @@ already-fixed defects — run `--tree gemini` after pulling from any upstream Ge
 
 ---
 
-## Contributing a skill
+## 🛠️ Contributing a skill
 
 1. **Write the description first**, as trigger conditions. `Use when <situation>` beats a summary.
 2. **Keep `SKILL.md` under 500 lines.** Move detail into `references/` and link it — an unlinked
@@ -366,7 +387,7 @@ skill-authoring best practices.
 
 ---
 
-## Working with agents on this repo
+## 🤝 Working with agents on this repo
 
 Much of this repo was built by dispatching agents per task, with a separate reviewer verifying each
 one. The single practice that mattered most, stated as a rule:
@@ -427,7 +448,7 @@ Fuller notes, including the specific traps, are in
 
 ---
 
-## Provenance and licence
+## 📜 Provenance and licence
 
 Apache-2.0 — see [LICENSE](LICENSE).
 

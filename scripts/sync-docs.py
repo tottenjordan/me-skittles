@@ -60,6 +60,12 @@ def end_marker(name: str) -> str:
     return f"<!-- END GENERATED: {name} -->"
 
 
+SHIELD = (
+    '<img src="https://img.shields.io/badge/{label}-{message}-{colour}?style=flat-square"'
+    ' alt="{alt}" />'
+)
+
+
 def cost_by_tree(data: dict) -> list[str]:
     """Standing per-session cost, and what one firing skill adds, per tree."""
     rows = [
@@ -103,7 +109,38 @@ def cost_by_group(data: dict) -> list[str]:
     return rows
 
 
-BLOCKS = {"context-cost-tree": cost_by_tree, "group-costs": cost_by_group}
+def shield(label: str, message: str, colour: str, alt: str) -> str:
+    """One indented shields.io badge. `label`/`message` are URL-encoded; `alt` is not."""
+    return "  " + SHIELD.format(label=label, message=message, colour=colour, alt=alt)
+
+
+def badges(data: dict) -> list[str]:
+    """Shields.io badges. Generated because three of them state derived counts.
+
+    A badge is the most visible number in the file and the least likely to be
+    re-checked by eye, so hand-maintaining `skills-117` is how a README ends up
+    advertising a figure the tree stopped matching.
+    """
+    skills = data["skills_total"]
+    claude, gemini = (data["skills_by_tree"][tree] for tree in TREES)
+    return [
+        '<p align="center">',
+        shield("skills", skills, "8A2BE2", f"{skills} skills"),
+        shield("Claude%20Code", f"{claude}%20skills", "D97757", f"Claude Code: {claude} skills"),
+        shield("Gemini%20CLI", f"{gemini}%20skills", "4285F4", f"Gemini CLI: {gemini} skills"),
+        shield("python", "3.11%2B", "3776AB", "Python 3.11+"),
+        shield("packaging", "uv", "DE5FE9", "packaging: uv"),
+        shield("lint", "ruff", "D7FF64", "lint: ruff"),
+        shield("license", "Apache%202.0", "green", "license: Apache 2.0"),
+        "</p>",
+    ]
+
+
+BLOCKS = {
+    "badges": badges,
+    "context-cost-tree": cost_by_tree,
+    "group-costs": cost_by_group,
+}
 
 
 def render(text: str, data: dict) -> str:
