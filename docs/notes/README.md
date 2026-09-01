@@ -17,6 +17,7 @@ If something is derivable by reading the repo, it does not belong here — it be
 | [collaboration.md](collaboration.md) | Why agent attribution kept reappearing and how it is now prevented; commit and PR conventions; how plans are executed and reviewed. |
 | [documentation-drift.md](documentation-drift.md) | Why the docs are both generated *and* validated — the three drift incidents, what a checker can and cannot catch, and the trap that generation protects only the marked region while the paragraph beside it rots. Read before simplifying that machinery, or before hand-writing a number into a live doc. |
 | [tooling-gotchas.md](tooling-gotchas.md) | Environment failures with silent or misleading symptoms — shallow CI clones, JS-rendered docs, `set -u` and `local`, unset git identity, stacked-PR ordering. |
+| [multi-harness-skills.md](multi-harness-skills.md) | What actually ports between Claude Code, Gemini CLI, Codex and Cursor (six frontmatter fields — less than you'd think), why Claude Code's 1% listing budget makes `--all` an anti-pattern, how thin this repo's Gemini port measurably is, and the Skill Registry rules that 11 of our skills break. Read before adding a harness, a frontmatter key, or a bulk install. |
 
 ## Related
 
