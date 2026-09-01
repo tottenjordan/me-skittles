@@ -46,6 +46,17 @@ Both `tokens` (the estimate) and `tokens_rounded` (the figure docs quote) are
 computed from the character count directly. Deriving the second from the first
 would round twice and can land 10 tokens off.
 
+The body estimate
+-----------------
+README.md also quotes what one *firing* skill adds: the median `SKILL.md`, in
+full — frontmatter included, since the whole file is what loads — over **every**
+`SKILL.md`, bundle sub-skills included, divided by 4.
+
+Note the asymmetry with the description budget above, which counts only
+top-level skills. It is deliberate rather than an oversight: a bundle sub-skill
+has no top-level `SKILL.md` and so costs nothing at session start, but its body
+does load when it triggers, so it belongs in the median and not in the budget.
+
 Chars-per-token is a crude constant, not a tokenizer. It is the documented
 method, it needs no dependency, and it is stable — the numbers are a budget for
 comparing groups against each other, not an invoice.
@@ -160,7 +171,30 @@ def installable_skills(repo: Path, trees: tuple[str, ...] = TREES) -> dict[str, 
     }
 
 
-def estimate_tokens(chars: int, step: int = 1) -> int:
+def median_skill_chars(skill_files: list[Path]) -> Decimal:
+    """Median full-file length of a set of SKILL.md files; 0 if there are none.
+
+    Full file, frontmatter included — the whole thing is what a trigger loads.
+    Kept exact with `Decimal` rather than `statistics.median`, whose float
+    average of the two middle values can land a .5 case on the wrong side once
+    it reaches `estimate_tokens`.
+    """
+    lengths = []
+    for path in skill_files:
+        try:
+            lengths.append(len(path.read_text(encoding="utf-8")))
+        except (OSError, UnicodeDecodeError):
+            continue  # Unreadable contributes nothing, as everywhere else here.
+    lengths.sort()
+    if not lengths:
+        return Decimal(0)
+    middle = len(lengths) // 2
+    if len(lengths) % 2:
+        return Decimal(lengths[middle])
+    return Decimal(lengths[middle - 1] + lengths[middle]) / 2
+
+
+def estimate_tokens(chars: int | Decimal, step: int = 1) -> int:
     """Estimate tokens from a character count, rounded half-up to `step`.
 
     Half-up rather than the builtin `round()`, which is half-to-even: at exactly
@@ -251,6 +285,9 @@ def facts(repo: Path) -> dict:
     - `google_published` — vendored from Google, per `metadata.publisher`
     - `description_chars_by_tree`, `tokens_by_tree`, `tokens_k_by_tree` —
       standing per-session cost of a whole tree
+    - `median_skill_chars_by_tree`, `median_skill_tokens_by_tree`,
+      `median_skill_tokens_k_by_tree` — what one firing skill adds; see the
+      module docstring for why this one counts bundle sub-skills
     - `oversized_descriptions` — skills above WARN_DESCRIPTION_LENGTH chars
     - `groups` — per-(tree, group) facts; see `group_facts`
     """
@@ -270,6 +307,8 @@ def facts(repo: Path) -> dict:
         described_by_tree[tree] = len(present)
         bundles[tree] = sorted(set(top_level) - set(present))
         description_chars[tree] = sum(len(description_of(path)) for path in present.values())
+
+    median_chars = {tree: median_skill_chars(paths) for tree, paths in skill_files.items()}
 
     claude = set(names.get("claude", []))
     gemini = set(names.get("gemini", []))
@@ -299,6 +338,13 @@ def facts(repo: Path) -> dict:
         },
         "tokens_k_by_tree": {
             tree: format_k(estimate_tokens(chars)) for tree, chars in description_chars.items()
+        },
+        "median_skill_chars_by_tree": median_chars,
+        "median_skill_tokens_by_tree": {
+            tree: estimate_tokens(chars) for tree, chars in median_chars.items()
+        },
+        "median_skill_tokens_k_by_tree": {
+            tree: format_k(estimate_tokens(chars)) for tree, chars in median_chars.items()
         },
         "oversized_descriptions": oversized,
         "description_warn_limit": WARN_DESCRIPTION_LENGTH,
