@@ -21,7 +21,7 @@ skills = [
 [[group]]
 name = "workflow"
 tree = "claude"
-description = "The plan-then-execute development loop: write a plan, execute it, hand work to subagents, run the code-review round trip, and land the branch. Start at writing-plans."
+description = "The plan-then-execute development loop: write a plan, execute it, hand work to subagents, run the code-review round trip, set up Python projects and scripts with modern tooling, and land the branch. Start at writing-plans."
 skills = [
   "writing-plans",
   "executing-plans",
@@ -91,7 +91,7 @@ skills = [
 [[group]]
 name = "workflow"
 tree = "gemini"
-description = "The plan-then-execute development loop: write a plan, execute it, hand work to subagents, run the code-review round trip, and land the branch. Start at writing-plans."
+description = "The plan-then-execute development loop: write a plan, execute it, hand work to subagents, run the code-review round trip, manage Python dependencies with the project's own tooling, and land the branch. Start at writing-plans."
 skills = [
   "writing-plans",
   "executing-plans",
@@ -139,7 +139,7 @@ skills = [
 [[group]]
 name = "meta"
 tree = "gemini"
-description = "Maintain the agent's own configuration and repo hygiene — author skills, write and improve GEMINI.md, format commits, add license headers. Start at writing-skills."
+description = "Maintain the agent's own configuration and repo hygiene — author skills, repair and reinstall ones that failed to install, write and improve GEMINI.md, format commits, add license headers. Start at writing-skills."
 skills = [
   "writing-skills",
   "gemini-md-author",
@@ -152,16 +152,15 @@ skills = [
 [[group]]
 name = "data"
 tree = "gemini"
-description = "Data analysis and machine learning practice — methodology for clustering, regression, classification and time series, plus Jupyter notebook conventions for exploring and visualizing BigQuery data. Start at ml-best-practices."
+description = "Machine learning practice — methodology for clustering, regression, classification and time series work, from framing the problem to evaluating the model. Start at ml-best-practices."
 skills = [
   "ml-best-practices",
-  "notebook-guidance",
 ]
 
 [[group]]
 name = "gcp"
 tree = "gemini"
-description = "Google Cloud and BigQuery — data pipelines and orchestration with Composer/Airflow, Dataflow and Spark, BigQuery SQL, BigFrames and Dataform/dbt, Cloud Storage, and data governance. Start at gcp-data-pipelines."
+description = "Google Cloud and BigQuery — data pipelines and orchestration with Composer/Airflow, Dataflow and Spark, BigQuery SQL, BigFrames and Dataform/dbt, Cloud Storage, data governance, and notebook conventions for exploring BigQuery data. Start at gcp-data-pipelines."
 skills = [
   "accidental-data-loss-prevention",
   "bigquery-ai-ml",
@@ -188,4 +187,5 @@ skills = [
   "gcp-spark",
   "gcs-security-assessment",
   "google-cloud-storage-basics",
+  "notebook-guidance",
 ]
