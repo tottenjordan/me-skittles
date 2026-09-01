@@ -101,6 +101,7 @@ skills = [
   "finishing-a-development-branch",
   "git-worktrees",
   "ralph-wiggum",
+  "managing-python-dependencies",
 ]
 
 [[group]]
@@ -145,12 +146,22 @@ skills = [
   "gemini-md-improver",
   "git-commit-formatter",
   "license-header-adder",
+  "skill-repair",
+]
+
+[[group]]
+name = "data"
+tree = "gemini"
+description = "Data analysis and machine learning practice — methodology for clustering, regression, classification and time series, plus Jupyter notebook conventions for exploring and visualizing BigQuery data. Start at ml-best-practices."
+skills = [
+  "ml-best-practices",
+  "notebook-guidance",
 ]
 
 [[group]]
 name = "gcp"
 tree = "gemini"
-description = "Google Cloud and BigQuery — 29 Google-published skills spanning data pipelines, BigQuery, Composer/Airflow, Dataflow, Spark, GCS, and ML practice. Start at gcp-data-pipelines."
+description = "Google Cloud and BigQuery — data pipelines and orchestration with Composer/Airflow, Dataflow and Spark, BigQuery SQL, BigFrames and Dataform/dbt, Cloud Storage, and data governance. Start at gcp-data-pipelines."
 skills = [
   "accidental-data-loss-prevention",
   "bigquery-ai-ml",
@@ -177,8 +188,4 @@ skills = [
   "gcp-spark",
   "gcs-security-assessment",
   "google-cloud-storage-basics",
-  "managing-python-dependencies",
-  "ml-best-practices",
-  "notebook-guidance",
-  "skill-repair",
 ]
