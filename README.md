@@ -2,7 +2,7 @@
 
 Agent skills for [Claude Code](https://claude.ai/code) and [Gemini CLI](https://github.com/google-gemini/gemini-cli) — reusable, prompt-based tools that teach a coding agent a specific capability, from ADK agent development to BigQuery analytics to browser automation.
 
-**117 skills** across two trees: `claude/` (28) and `gemini/` (57), of which 24 exist in both. Every skill is validated in CI.
+**117 skills** across two trees, counting every `SKILL.md` — a plugin bundle holds several apiece. They install as directories: `claude/` (28) and `gemini/` (57), of which 24 exist in both. Every skill is validated in CI.
 
 ```bash
 uv run scripts/validate-skills.py     # 117 skills, 0 errors
