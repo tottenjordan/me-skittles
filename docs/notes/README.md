@@ -34,4 +34,11 @@ that turn out wrong or go stale — a confidently wrong note is worse than none.
 A note reflects what was true when written. If one names a file, flag, or command, re-verify it
 still exists before acting on it.
 
+**Notes are point-in-time and are deliberately not validated.** `scripts/validate-skills.py` checks
+stated counts only in the four live documents listed in its `LIVE_DOCS` constant — `README.md`,
+`CLAUDE.md`, `GEMINI.md`, `ATTRIBUTION.md` — and `scripts/sync-docs.py` generates into none of the
+files here. A figure in a note is the measurement that justified a decision, so refreshing it to
+today's number would delete the evidence. Leave stale numbers alone; if one misleads, date it or
+say what has changed since, rather than overwriting it.
+
 Keep this index **under 200 lines**.

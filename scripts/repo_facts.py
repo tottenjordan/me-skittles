@@ -75,10 +75,11 @@ from pathlib import Path
 import tomllib
 import yaml
 
-# This module is the leaf: consumers import it, it imports none of them.
-# scripts/validate-skills.py defines several of the constants and helpers below
-# for itself; it should import them from here instead, but the dependency has to
-# stay one-way or the two form an import cycle.
+# This module is the leaf: consumers import it, it imports none of them. The
+# constants and helpers below are shared with scripts/validate-skills.py and
+# scripts/sync-docs.py, which import them from here rather than restating them —
+# two hand-written parsers of one file is how scripts/parse-groups.awk drifted.
+# The dependency stays one-way or the modules form an import cycle.
 TREES = ("claude", "gemini")
 SKILL_FILE = "SKILL.md"
 GROUPS_FILE = "groups.toml"
@@ -88,9 +89,9 @@ GROUPS_FILE = "groups.toml"
 CHARS_PER_TOKEN = 4
 TOKEN_STEP = 10
 
-# Descriptions above this are a standing context cost worth naming. Must match
-# WARN_DESCRIPTION_LENGTH in scripts/validate-skills.py — the README quotes how
-# many skills exceed it, so the count and the warning have to mean one thing.
+# Descriptions above this are a standing context cost worth naming. The README
+# quotes how many skills exceed it and scripts/validate-skills.py warns above it,
+# so the count and the warning have to mean one thing: this is that one thing.
 WARN_DESCRIPTION_LENGTH = 500
 
 # `metadata.publisher` marking a skill as vendored from Google rather than
@@ -99,24 +100,41 @@ WARN_DESCRIPTION_LENGTH = 500
 GOOGLE_PUBLISHER = "google"
 
 
-def extract_frontmatter(content: str) -> dict:
-    """Parse a SKILL.md's YAML frontmatter, or return {} if it has none.
+def parse_frontmatter(content: str) -> tuple[dict | None, str | None]:
+    """Parse a SKILL.md's YAML frontmatter. Returns (frontmatter, error message).
 
-    Same shape rules as scripts/validate-skills.py's function of this name, minus
-    the error reporting: absent, unclosed, unparseable and non-mapping
-    frontmatter all count as no facts to contribute.
+    Exactly one of the two is set. This is the repo's only frontmatter parser:
+    scripts/validate-skills.py reports the error string to the author, and
+    `extract_frontmatter` below throws it away. Empty frontmatter (`---\\n---`)
+    is well-formed and yields `{}`, not an error.
     """
     lines = content.split("\n")
     if not lines or lines[0].strip() != "---":
-        return {}
+        return None, "No frontmatter (file must start with ---)"
+
     end = next((i for i, line in enumerate(lines[1:], start=1) if line.strip() == "---"), None)
     if end is None:
-        return {}
+        return None, "Frontmatter not closed (missing closing ---)"
+
     try:
         parsed = yaml.safe_load("\n".join(lines[1:end]))
-    except yaml.YAMLError:
-        return {}
-    return parsed if isinstance(parsed, dict) else {}
+    except yaml.YAMLError as exc:
+        return None, f"YAML parse error: {exc}"
+
+    if parsed is not None and not isinstance(parsed, dict):
+        return None, "Frontmatter is not a mapping"
+    return parsed or {}, None
+
+
+def extract_frontmatter(content: str) -> dict:
+    """Frontmatter as facts, or {} if there is nothing usable to count.
+
+    The tolerant face of `parse_frontmatter`: absent, unclosed, unparseable and
+    non-mapping frontmatter all contribute nothing rather than raising. Judging a
+    skill malformed belongs to scripts/validate-skills.py.
+    """
+    parsed, _error = parse_frontmatter(content)
+    return parsed or {}
 
 
 def frontmatter_of(skill_file: Path) -> dict:
