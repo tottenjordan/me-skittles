@@ -11,7 +11,49 @@ jobs:
     name: Repo-wide SKILL.md validation
     runs-on: ubuntu-latest
     steps:
+      # fetch-depth: 0 is load-bearing. The default shallow clone cannot resolve
+      # origin/main..HEAD, so the attribution check below would find no commits
+      # and pass silently rather than fail.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: No agent attribution in commit messages
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+          HEAD: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          if ! git rev-parse --verify -q "$BASE^{commit}" >/dev/null; then
+            echo "No usable base ref ($BASE); skipping commit scan."; exit 0
+          fi
+          offenders=$(git log --format='%H %s%n%b' "$BASE..$HEAD" \
+            | grep -inE 'co-authored-by:.*(claude|anthropic)|generated with \[?claude code' || true)
+          if [ -n "$offenders" ]; then
+            echo "::error::Commit messages contain agent attribution:"
+            echo "$offenders"
+            echo "Fix: git rebase -i $BASE and remove the trailer, then force-push with --force-with-lease."
+            echo "See CODE_STANDARDS.md."
+            exit 1
+          fi
+          echo "Commit messages clean."
+
+      - name: No agent attribution in the PR description
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          # The PR body is not in git, so the commit scan above cannot see it.
+          body=$(gh api "repos/${{ github.repository }}/pulls/$PR" --jq '.body // ""')
+          offenders=$(printf '%s' "$body" \
+            | grep -inE 'co-authored-by:.*(claude|anthropic)|generated with \[?claude code|🤖' || true)
+          if [ -n "$offenders" ]; then
+            echo "::error::PR description contains agent attribution:"
+            echo "$offenders"
+            echo "Fix: gh pr edit $PR --body '<text without the footer>'. See CODE_STANDARDS.md."
+            exit 1
+          fi
+          echo "PR description clean."
 
       - name: Install uv
         uses: astral-sh/setup-uv@v5

@@ -1,0 +1,191 @@
+# Installable groups. ./scripts/install.sh --group <name> installs a whole group.
+#
+# Every skill directory must appear in exactly one group for its tree; the
+# validator fails otherwise, so this file cannot silently drift from the tree.
+#
+# One [[group]] entry per (tree, group). Keep the structure flat and one skill
+# per line: this file is read both by Python's tomllib and by awk in the
+# installer.
+
+[[group]]
+name = "agents"
+tree = "claude"
+description = "Building and shipping agents with Google's ADK — core dev loop, A2A protocol, Agent Engine deployment. Start at adk."
+skills = [
+  "adk",
+  "a2a",
+  "agent-engine",
+  "agent-development",
+]
+
+[[group]]
+name = "workflow"
+tree = "claude"
+description = "The plan-then-execute development loop: write a plan, execute it, hand work to subagents, run the code-review round trip, set up Python projects and scripts with modern tooling, and land the branch. Start at writing-plans."
+skills = [
+  "writing-plans",
+  "executing-plans",
+  "subagent-driven-development",
+  "requesting-code-review",
+  "receiving-code-review",
+  "finishing-a-development-branch",
+  "git-worktrees",
+  "ralph-wiggum",
+  "modern-python",
+]
+
+[[group]]
+name = "testing"
+tree = "claude"
+description = "Test-first discipline plus the traps it does not catch — anti-patterns, flaky sleep-based waits, property-based testing, and pressure-testing skills themselves. Start at test-driven-development."
+skills = [
+  "test-driven-development",
+  "testing-anti-patterns",
+  "condition-based-waiting",
+  "testing-skills-with-subagents",
+  "property-based-testing",
+  "testing-handbook-skills",
+]
+
+[[group]]
+name = "diagrams"
+tree = "claude"
+description = "Figure and diagram generation — publication figures and plots via the PaperBanana MCP server, and GCP-branded cloud architecture diagrams."
+skills = [
+  "paperbanana",
+  "gcp-diagram",
+]
+
+[[group]]
+name = "tools"
+tree = "claude"
+description = "Drive things outside the editor: browser automation with browser-use and Playwright, Gemini Enterprise, Vertex AI pipeline inspection, and generated insight reports."
+skills = [
+  "browser-use",
+  "playwright-skill",
+  "gemini-enterprise",
+  "inspect-vai-pipes",
+  "insights-report",
+]
+
+[[group]]
+name = "meta"
+tree = "claude"
+description = "Maintain the agent's own configuration — author and pressure-test new skills, and keep CLAUDE.md accurate. Start at writing-skills."
+skills = [
+  "writing-skills",
+  "claude-md-improver",
+]
+
+[[group]]
+name = "agents"
+tree = "gemini"
+description = "Building and shipping agents with Google's ADK — core dev loop, A2A protocol, Agent Engine deployment. Start at adk."
+skills = [
+  "adk",
+  "a2a",
+  "agent-engine",
+  "agent-development",
+]
+
+[[group]]
+name = "workflow"
+tree = "gemini"
+description = "The plan-then-execute development loop: write a plan, execute it, hand work to subagents, run the code-review round trip, manage Python dependencies with the project's own tooling, and land the branch. Start at writing-plans."
+skills = [
+  "writing-plans",
+  "executing-plans",
+  "subagent-driven-development",
+  "requesting-code-review",
+  "receiving-code-review",
+  "finishing-a-development-branch",
+  "git-worktrees",
+  "ralph-wiggum",
+  "managing-python-dependencies",
+]
+
+[[group]]
+name = "testing"
+tree = "gemini"
+description = "Test-first discipline plus the traps it does not catch — anti-patterns, flaky sleep-based waits, property-based testing, and pressure-testing skills themselves. Start at test-driven-development."
+skills = [
+  "test-driven-development",
+  "testing-anti-patterns",
+  "condition-based-waiting",
+  "testing-skills-with-subagents",
+  "property-based-testing",
+  "testing-handbook-skills",
+]
+
+[[group]]
+name = "diagrams"
+tree = "gemini"
+description = "Figure and diagram generation — publication figures and plots via the PaperBanana MCP server, and GCP-branded cloud architecture diagrams."
+skills = [
+  "paperbanana",
+  "gcp-diagram",
+]
+
+[[group]]
+name = "tools"
+tree = "gemini"
+description = "Drive things outside the editor: browser automation with browser-use and Playwright, plus Gemini Enterprise."
+skills = [
+  "browser-use",
+  "playwright-skill",
+  "gemini-enterprise",
+]
+
+[[group]]
+name = "meta"
+tree = "gemini"
+description = "Maintain the agent's own configuration and repo hygiene — author skills, repair and reinstall ones that failed to install, write and improve GEMINI.md, format commits, add license headers. Start at writing-skills."
+skills = [
+  "writing-skills",
+  "gemini-md-author",
+  "gemini-md-improver",
+  "git-commit-formatter",
+  "license-header-adder",
+  "skill-repair",
+]
+
+[[group]]
+name = "data"
+tree = "gemini"
+description = "Machine learning practice — methodology for clustering, regression, classification and time series work, from framing the problem to evaluating the model. Start at ml-best-practices."
+skills = [
+  "ml-best-practices",
+]
+
+[[group]]
+name = "gcp"
+tree = "gemini"
+description = "Google Cloud and BigQuery — data pipelines and orchestration with Composer/Airflow, Dataflow and Spark, BigQuery SQL, BigFrames and Dataform/dbt, Cloud Storage, data governance, and notebook conventions for exploring BigQuery data. Start at gcp-data-pipelines."
+skills = [
+  "accidental-data-loss-prevention",
+  "bigquery-ai-ml",
+  "bigquery-bigframes",
+  "bigquery-data-transfer-service",
+  "bigquery-graph",
+  "bigquery-sql",
+  "building-data-apps",
+  "data-autocleaning",
+  "dataform-bigquery",
+  "dbt-bigquery",
+  "discovering-gcp-data-assets",
+  "enforcing-resource-attribution",
+  "federate-lakehouse-catalog",
+  "gcloud-auth-verification",
+  "gcp-composer-troubleshooting",
+  "gcp-data-pipelines",
+  "gcp-dataflow",
+  "gcp-managed-airflow-dag-authoring",
+  "gcp-managed-airflow-migrations",
+  "gcp-managed-airflow-recommendations",
+  "gcp-pipeline-orchestration",
+  "gcp-pipeline-resource-provisioning",
+  "gcp-spark",
+  "gcs-security-assessment",
+  "google-cloud-storage-basics",
+  "notebook-guidance",
+]

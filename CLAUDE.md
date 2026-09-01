@@ -2,6 +2,9 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> **Before writing code or changing the environment, read [CODE_STANDARDS.md](CODE_STANDARDS.md).**
+> It is short, and it is binding — tooling, attribution, git conventions, and the rules CI enforces.
+
 ## Repository Purpose
 
 **me-skittles** is a collection of Claude Code skills (slash commands) and their Gemini CLI equivalents. Skills are reusable prompt-based tools that extend Claude Code and Gemini CLI with specialized capabilities — from ADK agent development to browser automation to diagram generation.
@@ -88,6 +91,9 @@ pulling from an upstream Gemini skills repo.
 
 ## Conventions
 
+- **[CODE_STANDARDS.md](CODE_STANDARDS.md) governs tooling, attribution, and git.** Read it first.
+- Install skills with `./scripts/install.sh` — `--list`, `--all`, or named skills
+- Session notes live in [`docs/notes/`](docs/notes/README.md); plans in [`docs/plans/`](docs/plans)
 - Skills follow a TDD-inspired methodology: write pressure-test scenarios, baseline without the skill, write the skill, verify compliance (see `writing-skills/SKILL.md`)
 - When creating or modifying skills, use the `/writing-skills` skill for guidance
 - Test skills with `/testing-skills-with-subagents` before deployment
