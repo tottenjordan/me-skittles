@@ -92,6 +92,17 @@ Run before committing:
 uv run scripts/validate-skills.py
 ```
 
+## Documentation
+
+**A derived fact in a live document is generated or validated, never hand-maintained** — counts,
+token budgets and group membership in `README.md`, `CLAUDE.md`, `GEMINI.md` and `ATTRIBUTION.md`
+are copies of what the tree and `groups.toml` already say, and copies drift.
+`uv run scripts/sync-docs.py` writes the generated tables (`--check` in CI), and
+`scripts/validate-skills.py` checks the rest.
+`docs/notes/` and `docs/plans/` are exempt: they record what was true when written. Why both
+mechanisms, and why not just generate everything —
+[docs/notes/documentation-drift.md](docs/notes/documentation-drift.md).
+
 ## Git
 
 - **One commit per logical change.** Short imperative subject; body explaining *why*, not *what*.

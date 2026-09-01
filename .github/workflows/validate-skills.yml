@@ -63,6 +63,13 @@ jobs:
       - name: Validate every SKILL.md in claude/ and gemini/
         run: uv run scripts/validate-skills.py
 
+      # The stated-count and catalogue-membership checks run inside the step
+      # above; this one covers the other tier — the README tables that are
+      # generated rather than validated. --check regenerates in memory, diffs,
+      # and never writes, so a stale table fails here instead of shipping.
+      - name: README generated tables match the tree
+        run: uv run scripts/sync-docs.py --check
+
       # Bundle-specific checks (required per-type sections, Hugo shortcodes) for
       # the vendored Trail of Bits skills, which the repo-wide validator leaves
       # to this script.

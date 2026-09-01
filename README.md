@@ -2,7 +2,7 @@
 
 Agent skills for [Claude Code](https://claude.ai/code) and [Gemini CLI](https://github.com/google-gemini/gemini-cli) — reusable, prompt-based tools that teach a coding agent a specific capability, from ADK agent development to BigQuery analytics to browser automation.
 
-**117 skills** across two trees: `claude/` (28) and `gemini/` (57), of which 24 exist in both. Every skill is validated in CI.
+**117 skills** across two trees, counting every `SKILL.md` — a plugin bundle holds several apiece. They install as directories: `claude/` (28) and `gemini/` (57), of which 24 exist in both. Every skill is validated in CI.
 
 ```bash
 uv run scripts/validate-skills.py     # 117 skills, 0 errors
@@ -19,6 +19,7 @@ uv run scripts/validate-skills.py     # 117 skills, 0 errors
 - [Repository layout](#repository-layout)
 - [Validation](#validation)
 - [Contributing a skill](#contributing-a-skill)
+- [Working with agents on this repo](#working-with-agents-on-this-repo)
 - [Provenance and licence](#provenance-and-licence)
 
 ---
@@ -205,15 +206,21 @@ Every skill's `description` is loaded into context at the start of **every sessi
 the skill fires. Bodies are loaded only on trigger. So the catalogue has a fixed cost that grows
 with its size:
 
+<!-- BEGIN GENERATED: context-cost-tree — edits here are overwritten by scripts/sync-docs.py -->
+
 | | Skills | Description budget | When one fires |
 |---|---|---|---|
 | `claude/` | 26 top-level | ~1.8k tokens per session | +2.4k tokens median |
 | `gemini/` | 55 top-level | ~5.2k tokens per session | +2.0k tokens median |
 
+<!-- END GENERATED: context-cost-tree -->
+
 ### What each group costs
 
 Installing by group is how you pay for a slice rather than a whole tree. Standing cost per session,
 by group:
+
+<!-- BEGIN GENERATED: group-costs — edits here are overwritten by scripts/sync-docs.py -->
 
 | Group | `claude/` | `gemini/` |
 |---|---|---|
@@ -227,12 +234,23 @@ by group:
 | `gcp` | — | 26 skills · ~3,180 tokens |
 | **whole tree** | 28 skills · ~1.8k | 57 skills · ~5.2k |
 
-**Method**, so the numbers can be re-derived rather than trusted: for each group in `groups.toml`,
-sum the `description` field from every member skill's `SKILL.md` frontmatter and divide the
-character count by 4. They move whenever a description does. The counts here are group membership,
-which is why they run two ahead of the top-level counts above: the `testing` groups list six skills
-but contribute four descriptions, because `property-based-testing` and `testing-handbook-skills` are
-plugin bundles with no top-level `SKILL.md` and so cost nothing at session start.
+<!-- END GENERATED: group-costs -->
+
+**Method**, so the numbers can be re-derived rather than trusted. Both tables above are generated
+from `scripts/repo_facts.py` by `uv run scripts/sync-docs.py`, which also has a `--check` mode that
+diffs without writing. Edit that module, not the cells — the cells are overwritten.
+
+- **Description budget** — for each group in `groups.toml`, sum the `description` field from every
+  member skill's `SKILL.md` frontmatter and divide the character count by 4. It moves whenever a
+  description does. The counts are group membership, which is why they run two ahead of the
+  top-level counts above: the `testing` groups list six skills but contribute four descriptions,
+  because `property-based-testing` and `testing-handbook-skills` are plugin bundles with no
+  top-level `SKILL.md` and so cost nothing at session start.
+- **When one fires** — the median `SKILL.md` in full, frontmatter included, divided by 4. Note the
+  asymmetry: this one counts **every** `SKILL.md` in the tree **including bundle sub-skills**, where
+  the description budget counts only top-level skills. That is deliberate. A bundle sub-skill costs
+  nothing at session start, because it has no top-level description to load — but when it triggers,
+  its body loads like any other.
 
 `gcp` alone is **61% of the Gemini tree's standing cost** — the argument for installing it only when
 the work is Google Cloud work. On the Claude side, `--group agents --group workflow` costs ~860
@@ -345,6 +363,67 @@ already-fixed defects — run `--tree gemini` after pulling from any upstream Ge
 
 Full authoring guidance lives in `claude/writing-skills/`, including a vendored copy of Anthropic's
 skill-authoring best practices.
+
+---
+
+## Working with agents on this repo
+
+Much of this repo was built by dispatching agents per task, with a separate reviewer verifying each
+one. The single practice that mattered most, stated as a rule:
+
+> **A report is a claim, not evidence.** Check it against the tree before acting on it — including
+> when the claim comes from whoever is directing the work.
+
+That cuts in every direction, and did.
+
+### The director's premises were wrong three times
+
+Each was a confident, plausible instruction that would have corrupted the work if followed:
+
+| Premise given | Reality | Cost if unchecked |
+|---|---|---|
+| "Collapse description whitespace" | Ten Gemini skills use YAML `\|` block scalars whose newlines genuinely occupy context | Every generated token figure wrong, low by 20–30 |
+| "…matching how the existing validator normalises them" | The validator only `.strip()`s. There were **zero** whitespace-collapsing idioms in the file | The wrong method would have looked sanctioned |
+| "The README currently says `~1.9k`" | Already corrected to `~1.8k` two commits earlier | An agent "fixing" something already right |
+
+The first two went into the module every other number derives from. Followed rather than checked,
+the generator would have confidently rewritten *correct* published figures into wrong ones — and CI
+would have gone green, because the generator and the validator would have shared the same wrong
+assumption.
+
+The agent grepped for the idiom, found none, checked the block scalars, and reported back with the
+evidence instead of complying.
+
+### Reviewers were wrong too, in the other direction
+
+Reviewing is not automatically more reliable than implementing:
+
+- A reviewer flagged a `shellcheck` result as unsubstantiated after `command -v shellcheck` found
+  nothing. The tool had been run through `uvx`, which does not put a binary on `PATH`. The original
+  claim was true.
+- An agent reported `CLAUDE.md` as stale, listing skills it said were wrongly documented. Those
+  entries had been removed several merges earlier; zero occurrences remained. It had reconstructed
+  a state that no longer existed.
+- An implementer concluded a published figure was underivable after trying four methods. A reviewer
+  swept the 2×2×2 grid of {median, mean} × {full text, body} × {top-level, all files} and found the
+  one variant that reproduced it — then showed it was the *only* one, so the match was not luck.
+
+### What actually made it work
+
+- **Verify the claim, not the confidence.** Every correction above came from someone running the
+  thing rather than reading about it. Length and polish of a report predicted nothing.
+- **Test the fix in both directions.** A check that stops erroring might be fixed or might be
+  broken. Every guard here was tested to fire on bad input *and* stay quiet on good.
+- **Say what you could not confirm.** One agent refused to reverse-engineer a formula to fit a
+  number it could not derive, and said so. That honest gap was more useful than a plausible guess
+  would have been, and a reviewer closed it later.
+- **Distrust your own test before the feature.** Two apparent failures here were bad tests — a
+  sandbox carrying a stray `__pycache__`, and a probe missing a word the pattern required. Both
+  looked like broken features.
+
+Fuller notes, including the specific traps, are in
+[`docs/notes/collaboration.md`](docs/notes/collaboration.md) and
+[`docs/notes/tooling-gotchas.md`](docs/notes/tooling-gotchas.md).
 
 ---
 

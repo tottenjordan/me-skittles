@@ -96,10 +96,26 @@ push and PR. It enforces:
   shape the installer's awk parser needs: no inline arrays, no multi-line strings
 - The README skill catalogue naming no skill that is absent from both trees (a skill the catalogue
   omits is a warning)
+- Each catalogue row sitting under the section for the group that installs it. Headings map to
+  groups explicitly in `CATALOGUE_SECTION_GROUPS`; an unmapped section is skipped rather than
+  guessed at. This is what catches a skill left listed under **Google Cloud and data** after it
+  moved to another group, where `--group gcp` would never install it
+- Counts stated in prose agreeing with `scripts/repo_facts.py`, the module that derives every
+  number the docs may quote. Only recognised phrases are checked, each bound to one fact, so an
+  unattributable number is left alone rather than guessed at
 
 Run it before committing any skill change. It is also the guard against re-syncing upstream content
 that reintroduces already-fixed defects — run `--tree gemini` after pulling from any upstream skills
 repository.
+
+Prose counts are checked in the four live documents only — `README.md`, `CLAUDE.md`, `GEMINI.md`
+and `ATTRIBUTION.md` (the `LIVE_DOCS` constant). [`docs/notes/`](docs/notes/README.md) and
+[`docs/plans/`](docs/plans) are point-in-time records: their figures were true when written and are
+evidence for a decision, not a description of the repo today. They are deliberately neither
+validated nor regenerated.
+
+`uv run scripts/sync-docs.py` regenerates the README's two cost tables from the same module;
+`--check` fails without writing, and runs in CI.
 
 ## Conventions
 

@@ -19,7 +19,12 @@ Checks the invariants that make a skill loadable and keep the two trees honest:
 - groups.toml parses, has every required key, puts each skill directory in
   exactly one group for its tree, and means the same thing to tomllib as it
   does to the installer's awk parser (scripts/parse-groups.awk, run here)
-- The README skill catalogue names no skill that does not exist
+- The README skill catalogue names no skill that does not exist, and files each
+  skill under the section for the group that actually installs it
+- Counts stated in prose in README.md, CLAUDE.md, GEMINI.md and ATTRIBUTION.md
+  agree with scripts/repo_facts.py. Those four (see LIVE_DOCS), plus any plan
+  that opted in with a `<!-- live-counts -->` line; docs/notes/ and the rest of
+  docs/plans/ are point-in-time records and stay exempt (see PLAN_LIVE_MARKER)
 - Descriptions stay under 500 chars — they are loaded every session (warning)
 - Helper scripts declare their third-party dependencies (warning)
 - No frontmatter keys the harness silently ignores (warning)
@@ -45,7 +50,9 @@ import json
 import re
 import subprocess
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass, field
+from functools import cache
 from pathlib import Path
 
 # `tomllib` is stdlib from 3.11, which the PEP 723 header above requires. ruff
@@ -53,19 +60,35 @@ from pathlib import Path
 # import here rather than into the stdlib block above; keep it here so
 # `uvx ruff check` stays clean without a config file.
 import tomllib
-import yaml
 
-TREES = ("claude", "gemini")
+# Same directory, so `uv run scripts/validate-skills.py` resolves it with no path
+# setup. It is the single source of derived facts, and of the constants and
+# helpers below that scripts/sync-docs.py also needs: keeping a second copy here
+# is how two readers of one file drift apart, which is the whole reason
+# check_groups_parser_agreement exists.
+#
+# pyyaml stays declared in the PEP 723 header above even though nothing here
+# imports yaml any more — repo_facts does, so `uv run` still has to install it.
+from repo_facts import (
+    TOKEN_STEP,
+    TREES,
+    WARN_DESCRIPTION_LENGTH,
+    estimate_tokens,
+    facts,
+    find_skills,
+    installable_skills,
+    parse_frontmatter,
+    percent_of,
+)
+
 MAX_NAME_LENGTH = 64
 MAX_DESCRIPTION_LENGTH = 1024   # hard API limit
 MIN_DESCRIPTION_LENGTH = 20
 
-# Every skill's description is loaded on every session, whether or not the skill
-# fires — so description length is a fixed context tax that scales with the
-# catalogue. At 117 skills the two trees already cost roughly 1.8k and 5.2k
-# tokens per session. 1024 is the API ceiling; this is the budget that keeps the
-# total sane, and the guidance calls a description "one line".
-WARN_DESCRIPTION_LENGTH = 500
+# WARN_DESCRIPTION_LENGTH is imported from repo_facts: every skill's description
+# is loaded on every session whether or not the skill fires, the README quotes
+# how many skills exceed the limit, and the same number has to mean both things.
+# 1024 above is the API ceiling; that one is the budget that keeps the total sane.
 
 # Everything in SKILL.md loads up front, so detail that belongs in references/
 # costs context on every single use. 500 is the repo's own documented standard --
@@ -172,6 +195,60 @@ BACKTICKED = re.compile(r"`([^`\n]+)`")
 # (router) or `property-based-testing` *(bundle)*.
 CELL_ANNOTATION = re.compile(r"\*?\([^)]*\)\*?")
 
+# `## Skill catalogue` subsections, mapped to the groups.toml group each one
+# enumerates. Keyed by the heading's leading label — the words before its em dash
+# or its parenthesised tree note, lowercased; see `section_label`.
+#
+# The mapping is explicit because headings are editorial and will not match group
+# names: `### Google Cloud and data` enumerates `gcp`, and `### Meta — authoring
+# skills and agent config` enumerates `meta`. Inferring the group from the words
+# would be a guess, and a wrong guess reports hand-written prose as broken. A
+# section with no entry here is simply not membership-checked.
+CATALOGUE_SECTION_GROUPS = {
+    "agents": "agents",
+    "development workflow": "workflow",
+    "testing": "testing",
+    "diagrams": "diagrams",
+    "tools and automation": "tools",
+    "meta": "meta",
+    "google cloud and data": "gcp",
+}
+
+# Splits a heading at the first em dash, en dash, or `(`/`*(` annotation.
+SECTION_LABEL_SPLIT = re.compile(r"[—–]|\*?\(")
+
+# Documents whose stated numbers are checked against scripts/repo_facts.py by
+# `check_stated_counts`. Named explicitly, and deliberately short.
+#
+# Everything under docs/notes/ and docs/plans/ is excluded on purpose, because it
+# is a point-in-time record rather than a description of the repo as it is now:
+# docs/notes/decisions-not-taken.md gives gcp-diagram's file count because that
+# measurement is what justified the decision, and a plan says "10 of 16 skills
+# fail" because that state is what motivated the work. Re-stating either as
+# today's number would destroy the evidence, so historical documents are neither
+# validated here nor generated into by scripts/sync-docs.py.
+#
+# Making the set a constant rather than a side effect of which paths the checks
+# happen to walk means the exemption survives someone adding a new check, and
+# means a new live document has to be added here deliberately.
+LIVE_DOCS = ("README.md", "CLAUDE.md", "GEMINI.md", "ATTRIBUTION.md")
+
+# A plan is a live document for the few days it is being executed and a
+# historical record forever after, and the blanket docs/plans/ exemption above
+# fits only the second half. A plan opts into the first half by carrying this
+# marker line; `check_stated_counts` then checks its numbers alongside LIVE_DOCS.
+#
+# Opting *out* is deleting the marker, which is deliberately the cheaper edit:
+# a finished plan that forgot to opt out fails with a one-line fix, and the
+# stale number that justified the work is never rewritten. Same explicit-opt-in
+# shape as CATALOGUE_SECTION_GROUPS and GEMINI_PURITY_ALLOWLIST — a file is only
+# ever covered because someone said so in the file.
+PLANS_DIR = "docs/plans"
+PLAN_LIVE_MARKER = "<!-- live-counts -->"
+
+# Where this file names itself, for findings whose fix is in this file.
+SELF = "scripts/validate-skills.py"
+
 
 @dataclass
 class Finding:
@@ -217,24 +294,19 @@ class Report:
         }
 
 
-def extract_frontmatter(content: str) -> tuple[dict | None, str | None]:
-    """Return (parsed frontmatter, error message). Exactly one will be set."""
-    lines = content.split("\n")
-    if not lines or lines[0].strip() != "---":
-        return None, "No frontmatter (file must start with ---)"
+@cache
+def repo_facts_for(repo: Path) -> dict:
+    """`repo_facts.facts()` for this repo, computed once per run.
 
-    end = next((i for i, line in enumerate(lines[1:], start=1) if line.strip() == "---"), None)
-    if end is None:
-        return None, "Frontmatter not closed (missing closing ---)"
+    It walks both trees and reads every SKILL.md. Two checks below need it, and
+    they should describe the same snapshot as each other in any case.
+    """
+    return facts(repo)
 
-    try:
-        parsed = yaml.safe_load("\n".join(lines[1:end]))
-    except yaml.YAMLError as exc:
-        return None, f"YAML parse error: {exc}"
 
-    if parsed is not None and not isinstance(parsed, dict):
-        return None, "Frontmatter is not a mapping"
-    return parsed or {}, None
+def installable_sets(repo: Path) -> dict[str, set[str]]:
+    """`repo_facts.installable_skills` as sets, for membership and difference."""
+    return {tree: set(names) for tree, names in installable_skills(repo).items()}
 
 
 def check_skill(skill_file: Path, repo: Path, report: Report) -> None:
@@ -246,7 +318,7 @@ def check_skill(skill_file: Path, repo: Path, report: Report) -> None:
         report.error(rel, f"Unreadable: {exc}")
         return
 
-    frontmatter, error = extract_frontmatter(content)
+    frontmatter, error = parse_frontmatter(content)
     if error:
         report.error(rel, error)
         return
@@ -433,7 +505,6 @@ def check_deprecated_models(repo: Path, report: Report) -> None:
                             f"Retired model ID {dead!r} — use {live!r} "
                             "(or mention the shutdown explicitly on this line)",
                         )
-    return
 
 
 def check_line_count(skill_file: Path, repo: Path, content: str, report: Report) -> None:
@@ -502,7 +573,7 @@ def check_script_dependencies(repo: Path, report: Report) -> None:
                     src,
                 )
             )
-            imported = set(re.findall(r"^\s*(?:import|from)\s+([a-zA-Z_]\w*)", src, re.M))
+            imported = set(re.findall(r"^\s*(?:import|from)\s+([a-zA-Z_]\w*)", src, re.MULTILINE))
             undeclared = sorted(imported - stdlib - siblings - optional)
             if undeclared:
                 report.warn(
@@ -521,19 +592,6 @@ def check_plugin_manifests(repo: Path, report: Report) -> None:
                 path.relative_to(repo),
                 f"Wrong plugin manifest for {tree}/ tree; expected {PLUGIN_DIR[tree]}",
             )
-
-
-def installable_skills(repo: Path) -> dict[str, set[str]]:
-    """Top-level skill directory names per tree — exactly what install.sh offers."""
-    return {
-        tree: {
-            path.name
-            for path in (repo / tree).iterdir()
-            if path.is_dir() and not path.name.startswith(".")
-        }
-        for tree in TREES
-        if (repo / tree).is_dir()
-    }
 
 
 def check_groups(repo: Path, report: Report) -> None:
@@ -569,7 +627,7 @@ def check_groups(repo: Path, report: Report) -> None:
         report.error(GROUPS_FILE, "No [[group]] entries — every skill must belong to a group")
         return
 
-    available = installable_skills(repo)
+    available = installable_sets(repo)
     membership: dict[tuple[str, str], list[str]] = {}  # (tree, skill) -> groups naming it
     seen_groups: set[tuple[str, str]] = set()
 
@@ -791,13 +849,95 @@ def catalogue_entries(section: str) -> set[str]:
     return listed
 
 
+def catalogue_sections(section: str) -> list[tuple[str, str]]:
+    """The catalogue split into (heading, body) pairs, one per `###` subsection.
+
+    Text before the first subsection belongs to no group and is dropped.
+    """
+    sections: list[tuple[str, str]] = []
+    heading: str | None = None
+    body: list[str] = []
+    for line in section.splitlines():
+        if line.startswith("### "):
+            if heading is not None:
+                sections.append((heading, "\n".join(body)))
+            heading, body = line[4:].strip(), []
+        elif heading is not None:
+            body.append(line)
+    if heading is not None:
+        sections.append((heading, "\n".join(body)))
+    return sections
+
+
+def section_label(heading: str) -> str:
+    """A heading's stable part: the words before its dash or its `*(…)*` note.
+
+    `Agents — ADK, A2A, Agent Engine *(both trees)*` reduces to `agents`, so
+    CATALOGUE_SECTION_GROUPS survives an edit to the descriptive tail — which is
+    the part of a heading that actually gets rewritten.
+    """
+    return " ".join(SECTION_LABEL_SPLIT.split(heading, maxsplit=1)[0].split()).lower()
+
+
+def check_catalogue_membership(repo: Path, section: str, report: Report) -> None:
+    """A catalogue row must sit in the section for the group that installs it.
+
+    Existence is not enough. `ml-best-practices` stayed listed under `### Google
+    Cloud and data` after it was rehomed to the `data` group: the table was
+    internally consistent, every name in it resolved, and it still told the
+    reader to run a `--group gcp` that would never install that skill. Only
+    groups.toml can settle it, so compare against groups.toml.
+
+    Trees where the section's group does not exist are skipped — `gcp` is
+    Gemini-only, so a Claude skill appearing there says nothing about claude/.
+    """
+    data = repo_facts_for(repo)
+    group_of: dict[tuple[str, str], str] = {}
+    groups_in_tree: dict[str, set[str]] = {}
+    for (tree, group), members in data["groups"].items():
+        groups_in_tree.setdefault(tree, set()).add(group)
+        for skill in members["skills"]:
+            group_of[(tree, skill)] = group
+
+    mapped: set[str] = set()
+    for heading, body in catalogue_sections(section):
+        expected = CATALOGUE_SECTION_GROUPS.get(section_label(heading))
+        if expected is None:
+            continue  # editorial section with no group; guessing would be worse
+        mapped.add(section_label(heading))
+        for name in sorted(catalogue_entries(body)):
+            for tree in TREES:
+                if expected not in groups_in_tree.get(tree, set()):
+                    continue
+                actual = group_of.get((tree, name))
+                if actual is None or actual == expected:
+                    continue  # absent from this tree, or filed correctly
+                report.error(
+                    README_FILE,
+                    f"Catalogue lists `{name}` under `### {heading}`, which is the `{expected}` "
+                    f"group, but groups.toml puts {tree}/{name} in `{actual}` — "
+                    f"`--group {expected}` will not install it; move the row, or regroup the skill",
+                )
+
+    # A heading that no longer matches leaves its section silently unchecked, so
+    # say so — the same reasoning as the stale GEMINI_PURITY_ALLOWLIST warning.
+    for label in sorted(set(CATALOGUE_SECTION_GROUPS) - mapped):
+        report.warn(
+            README_FILE,
+            f"No `{README_CATALOGUE_HEADING}` subsection matches CATALOGUE_SECTION_GROUPS entry "
+            f"{label!r}, so nothing checks that its group's rows are filed there — update the "
+            f"mapping in {SELF} or drop the entry",
+        )
+
+
 def check_readme_catalogue(repo: Path, report: Report) -> None:
     """The README catalogue must match the trees in both directions.
 
     Naming a skill that does not exist is an error: readers install by name, and
     a dangling entry sends them looking for something that was deleted. Omitting
     one is a warning — the catalogue is how a skill gets discovered at all, but a
-    missing row breaks nothing.
+    missing row breaks nothing. Listing a real skill in the wrong section is an
+    error too; see `check_catalogue_membership`.
 
     Sub-skills inside a plugin bundle count as existing, so the bundle listings
     resolve without an exemption.
@@ -814,7 +954,9 @@ def check_readme_catalogue(repo: Path, report: Report) -> None:
     end = text.find("\n## ", start + len(README_CATALOGUE_HEADING))
     section = text[start:] if end < 0 else text[start:end]
 
-    installable = installable_skills(repo)
+    check_catalogue_membership(repo, section, report)
+
+    installable = installable_sets(repo)
     known = {skill for skills in installable.values() for skill in skills}
     known |= {p.parent.name for p in find_skills(repo, TREES)}  # bundle sub-skills
 
@@ -832,14 +974,273 @@ def check_readme_catalogue(repo: Path, report: Report) -> None:
             report.warn(README_FILE, f"{tree}/{skill} is missing from the skill catalogue")
 
 
-def find_skills(repo: Path, trees: tuple[str, ...]) -> list[Path]:
-    """Locate every SKILL.md, including those nested inside plugin bundles."""
-    found: list[Path] = []
-    for tree in trees:
-        root = repo / tree
-        if root.is_dir():
-            found.extend(root.rglob("SKILL.md"))
-    return sorted(found)
+def _skills_total(data: dict, _match: re.Match[str]) -> int | None:
+    return data["skills_total"]
+
+
+def _tree_skills(data: dict, match: re.Match[str]) -> int | None:
+    return data["skills_by_tree"].get(match.group("tree"))
+
+
+def _google_published(data: dict, _match: re.Match[str]) -> int | None:
+    return len(data["google_published"])
+
+
+def _shared_skills(data: dict, _match: re.Match[str]) -> int | None:
+    return len(data["shared"])
+
+
+def _gcp_group(data: dict, _match: re.Match[str]) -> int | None:
+    group = data["groups"].get(("gemini", "gcp"))
+    return None if group is None else group["skill_count"]
+
+
+def _gcp_share_of_gemini(data: dict, _match: re.Match[str]) -> int | None:
+    """The `gcp` group's share of the whole gemini tree's standing cost, as a %."""
+    group = data["groups"].get(("gemini", "gcp"))
+    total = data["tokens_by_tree"].get("gemini")
+    if group is None or not total:
+        return None
+    return percent_of(group["tokens"], total)
+
+
+def _claude_agents_and_workflow(data: dict, _match: re.Match[str]) -> int | None:
+    """Standing cost of installing exactly `--group agents --group workflow`.
+
+    Summed from characters and rounded once, not from the two published
+    figures: rounding twice can land 10 tokens off, the same trap repo_facts
+    avoids by computing `tokens` and `tokens_rounded` independently.
+    """
+    groups = [data["groups"].get(("claude", name)) for name in ("agents", "workflow")]
+    if any(group is None for group in groups):
+        return None
+    return estimate_tokens(sum(group["description_chars"] for group in groups), TOKEN_STEP)
+
+
+def _claude_tree_tokens_k(data: dict, _match: re.Match[str]) -> str | None:
+    """The claude tree's standing cost as the docs quote it: the string `1.8k`.
+
+    A string, not an int, because the sentence quotes the rendered figure. The
+    comparison is textual, so `~1.80k` would be reported too.
+    """
+    return data["tokens_k_by_tree"].get("claude")
+
+
+@dataclass(frozen=True)
+class StatedCount:
+    """A phrase that states a derived number, bound to the fact it states.
+
+    `pattern` must capture the stated value as `n`, and may capture a tree as
+    `tree`. `actual` returns the fact from repo_facts, or None when the match
+    turns out not to name anything derivable after all — in which case nothing
+    is reported.
+
+    `actual` may return a **string** rather than an int, for figures the docs
+    quote pre-formatted (`~1.8k`). The comparison is then textual against the
+    captured `n`, so the rendering is checked along with the number.
+
+    `expect` is how many sites across the checked documents this phrasing is
+    known to match. It defaults to 1, and it exists because `matched` used to
+    be a set: a pattern with four sites was only reported retired once *all
+    four* stopped matching, so rewording one of them was silent. Counting
+    against `expect` makes each site's disappearance visible. Getting `expect`
+    wrong is self-correcting — too low and a genuine retirement goes unwarned,
+    too high and the warning fires until someone fixes the number here.
+    """
+
+    pattern: re.Pattern[str]
+    actual: Callable[[dict, re.Match[str]], int | str | None]
+    what: str
+    expect: int = 1
+
+
+# Prose the generator cannot reach, matched phrase by phrase.
+#
+# Attribution is the whole design. A number is only checkable when the words
+# around it say unambiguously which fact it is: `29 Google-published skills`
+# does, a bare `29` does not. So each entry recognises a specific phrasing and
+# binds it to one fact, and anything unrecognised is left alone. Coverage is
+# explicitly the lesser goal — a check that guesses invents errors on
+# hand-written prose, and a check that cries wolf gets switched off. Prefer
+# missing a number to inventing a finding; that is the same trade
+# check_script_dependencies makes when it exempts guarded imports.
+#
+# A phrasing that stops matching is warned about rather than silently dropped,
+# so rewording the prose cannot quietly retire the check on it. `expect` is what
+# makes that true per *site* rather than per pattern — four documents say
+# `29 Google-published skills`, and rewording one of them has to be visible.
+STATED_COUNTS: tuple[StatedCount, ...] = (
+    StatedCount(
+        re.compile(r"\*\*(?P<n>\d+) skills\*\* across"),
+        _skills_total,
+        "the number of SKILL.md files across both trees",
+    ),
+    StatedCount(
+        re.compile(r"(?P<n>\d+) skills, 0 errors"),
+        _skills_total,
+        "the number of SKILL.md files the validator checks",
+    ),
+    StatedCount(
+        re.compile(r"`(?P<tree>claude|gemini)/` \((?P<n>\d+)\)"),
+        _tree_skills,
+        "the number of top-level skill directories in that tree",
+        expect=2,  # README.md, one per tree, on one line
+    ),
+    StatedCount(
+        re.compile(r"`(?P<tree>claude|gemini)/`[^`\n]*?(?P<n>\d+) directories"),
+        _tree_skills,
+        "the number of top-level skill directories in that tree",
+        expect=2,  # GEMINI.md, one per tree
+    ),
+    StatedCount(
+        re.compile(r"^(?P<tree>claude|gemini)/\s+(?P<n>\d+) skills for"),
+        _tree_skills,
+        "the number of top-level skill directories in that tree",
+        expect=2,  # README.md layout block, one per tree
+    ),
+    StatedCount(
+        re.compile(r"The `(?P<tree>claude|gemini)/` tree[^\n]*?\*\*(?P<n>\d+) skills\*\*"),
+        _tree_skills,
+        "the number of top-level skill directories in that tree",
+    ),
+    StatedCount(
+        re.compile(r"(?P<n>\d+) Google-published skills"),
+        _google_published,
+        "the number of skills declaring `publisher: google`",
+        expect=4,  # README.md, CLAUDE.md, GEMINI.md twice
+    ),
+    StatedCount(
+        re.compile(r"(?P<n>\d+)-skill Google Cloud family"),
+        _google_published,
+        "the number of skills declaring `publisher: google`",
+    ),
+    StatedCount(
+        re.compile(r"(?P<n>\d+) Apache-2\.0 Google Cloud and BigQuery skills"),
+        _google_published,
+        "the number of skills declaring `publisher: google`",
+    ),
+    StatedCount(
+        re.compile(r"(?P<n>\d+) skills under `gemini/`, each declaring"),
+        _google_published,
+        "the number of skills declaring `publisher: google`",
+    ),
+    StatedCount(
+        re.compile(r"(?P<n>\d+) of them install as `--group gcp`"),
+        _gcp_group,
+        "the size of the gemini `gcp` group in groups.toml",
+    ),
+    StatedCount(
+        re.compile(r"--group gcp` installs the (?P<n>\d+)"),
+        _gcp_group,
+        "the size of the gemini `gcp` group in groups.toml",
+    ),
+    StatedCount(
+        re.compile(r"of which (?P<n>\d+) exist in both"),
+        _shared_skills,
+        "the number of skills present in both trees",
+    ),
+    # The three below sit in the paragraph immediately under the generated cost
+    # tables. That is the exact position docs/notes/documentation-drift.md
+    # names as the failure mode of generation — the marked region stays right
+    # while the sentence beside it rots — so leaving the showcase unchecked
+    # would have been the design demonstrating its own bug.
+    StatedCount(
+        re.compile(r"\*\*(?P<n>\d+)% of the Gemini tree's standing cost\*\*"),
+        _gcp_share_of_gemini,
+        "the gemini `gcp` group's share of that tree's description budget",
+    ),
+    StatedCount(
+        re.compile(r"`--group agents --group workflow` costs ~(?P<n>[\d,]+)"),
+        _claude_agents_and_workflow,
+        "the combined description budget of the claude `agents` and `workflow` groups",
+    ),
+    StatedCount(
+        re.compile(r"against ~(?P<n>[\d.]+k) for `--all`"),
+        _claude_tree_tokens_k,
+        "the claude tree's whole description budget",
+    ),
+)
+
+
+def opted_in_plans(repo: Path) -> list[str]:
+    """Plans carrying PLAN_LIVE_MARKER, which asks for their numbers to be checked.
+
+    docs/plans/ is exempt by default because a plan records what was true when
+    it was written. A plan being *executed* is the exception, and it says so in
+    itself rather than in a list here — see PLAN_LIVE_MARKER.
+    """
+    plans = repo / PLANS_DIR
+    if not plans.is_dir():
+        return []
+    marked = []
+    for path in sorted(plans.rglob("*.md")):
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        if PLAN_LIVE_MARKER in text:
+            marked.append(path.relative_to(repo).as_posix())
+    return marked
+
+
+def check_stated_counts(repo: Path, report: Report) -> None:
+    """Numbers stated in prose must agree with scripts/repo_facts.py.
+
+    scripts/sync-docs.py generates the tables whose every cell is derived, but
+    the counts in sentences — `**117 skills**`, `29 Google-published skills`,
+    `26 of them install as --group gcp` — cannot be generated without flattening
+    the writing around them. They are the ones that went stale, so they are
+    checked instead.
+
+    The documents checked are LIVE_DOCS, plus any plan that opted in with
+    PLAN_LIVE_MARKER. Everything else under docs/notes/ and docs/plans/ states
+    numbers that were true when written and must stay that way; see LIVE_DOCS.
+
+    A phrasing that stops matching as many sites as its `expect` says warns,
+    rather than silently retiring the check on that number. Only LIVE_DOCS
+    sites count toward `expect`: an opted-in plan is transient, and letting it
+    contribute would let a plan mask a live document's reworded sentence.
+    """
+    data = repo_facts_for(repo)
+    sites: dict[str, int] = {}
+    for doc in list(LIVE_DOCS) + opted_in_plans(repo):
+        path = repo / doc
+        if not path.is_file():
+            continue
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except (OSError, UnicodeDecodeError):
+            continue
+        for num, line in enumerate(lines, start=1):
+            for rule in STATED_COUNTS:
+                for match in rule.pattern.finditer(line):
+                    actual = rule.actual(data, match)
+                    if actual is None:
+                        continue
+                    if doc in LIVE_DOCS:
+                        sites[rule.pattern.pattern] = sites.get(rule.pattern.pattern, 0) + 1
+                    # `actual` is a string for figures the docs quote
+                    # pre-formatted, e.g. `~1.8k`; compare those as text so the
+                    # rendering is checked too.
+                    text = match.group("n")
+                    stated = text if isinstance(actual, str) else int(text.replace(",", ""))
+                    if stated != actual:
+                        report.error(
+                            f"{doc}:{num}",
+                            f"{match.group(0).strip()!r} states {stated}, but {rule.what} "
+                            f"is {actual} — correct the prose, or the thing it describes",
+                        )
+
+    for rule in STATED_COUNTS:
+        found = sites.get(rule.pattern.pattern, 0)
+        if found < rule.expect:
+            report.warn(
+                SELF,
+                f"The stated-count pattern {rule.pattern.pattern!r} ({rule.what}) matches "
+                f"{found} live document site(s), expected {rule.expect} — wording it recognised "
+                "was probably edited, and that number is no longer checked there; update the "
+                "pattern, correct `expect`, or drop the rule",
+            )
 
 
 def print_report(report: Report, verbose: bool) -> None:
@@ -898,6 +1299,7 @@ def main() -> int:
     check_plugin_manifests(repo, report)
     check_groups(repo, report)
     check_readme_catalogue(repo, report)
+    check_stated_counts(repo, report)
     check_script_dependencies(repo, report)
     check_deprecated_models(repo, report)
     if "gemini" in trees:

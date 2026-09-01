@@ -86,6 +86,23 @@ The `description` field controls when the skill is auto-triggered. Write it as t
 - The README skill catalogue names no skill absent from both trees (a skill the catalogue omits is
   a warning). Only table cells that are pure name lists count as catalogue entries, so prose — such
   as the pointer to the official `frontend-design` plugin — is not scanned
+- Each catalogue row sits under the section for the group that installs it. Headings map to groups
+  explicitly in `CATALOGUE_SECTION_GROUPS`; an unmapped section is skipped rather than guessed at.
+  This is the check that would have caught `ml-best-practices` still listed under **Google Cloud
+  and data** after it moved to the `data` group — a table that was internally consistent and still
+  told the reader to run a `--group gcp` that would never install it
+- Counts stated in prose agree with `scripts/repo_facts.py`, which derives every number the docs
+  are allowed to quote. Only recognised phrases are checked, each bound to one fact, so an
+  unattributable number is left alone rather than guessed at
+
+Prose counts are checked only in the four live documents — `README.md`, `CLAUDE.md`, `GEMINI.md`
+and `ATTRIBUTION.md` (the `LIVE_DOCS` constant). [`docs/notes/`](docs/notes/README.md) and
+[`docs/plans/`](docs/plans) are point-in-time records: their numbers were true when written, and
+are evidence for a decision rather than a description of the repo today. They are deliberately
+neither validated nor regenerated.
+
+`uv run scripts/sync-docs.py` regenerates the README's two cost tables from the same module;
+`--check` fails without writing, and runs in CI.
 
 ## Installing skills locally
 
