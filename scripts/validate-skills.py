@@ -16,6 +16,7 @@ Checks the invariants that make a skill loadable and keep the two trees honest:
 - Plugin bundles use the manifest directory matching their tree
 - SKILL.md stays under 500 lines (warns at 450) so progressive disclosure is preserved
 - No retired model IDs outside of text that discusses their retirement
+- Descriptions stay under 500 chars — they are loaded every session (warning)
 - Helper scripts declare their third-party dependencies (warning)
 - No frontmatter keys the harness silently ignores (warning)
 - Relative markdown links resolve (warning; template placeholders are skipped)
@@ -45,8 +46,15 @@ import yaml
 
 TREES = ("claude", "gemini")
 MAX_NAME_LENGTH = 64
-MAX_DESCRIPTION_LENGTH = 1024
+MAX_DESCRIPTION_LENGTH = 1024   # hard API limit
 MIN_DESCRIPTION_LENGTH = 20
+
+# Every skill's description is loaded on every session, whether or not the skill
+# fires — so description length is a fixed context tax that scales with the
+# catalogue. At 117 skills the two trees already cost roughly 1.9k and 5.2k
+# tokens per session. 1024 is the API ceiling; this is the budget that keeps the
+# total sane, and the guidance calls a description "one line".
+WARN_DESCRIPTION_LENGTH = 500
 
 # Everything in SKILL.md loads up front, so detail that belongs in references/
 # costs context on every single use. 500 is the repo's own documented standard --
@@ -228,6 +236,12 @@ def check_skill(skill_file: Path, repo: Path, report: Report) -> None:
         elif len(description) > MAX_DESCRIPTION_LENGTH:
             report.error(
                 rel, f"Description too long: {len(description)} chars (max {MAX_DESCRIPTION_LENGTH})"
+            )
+        elif len(description) > WARN_DESCRIPTION_LENGTH:
+            report.warn(
+                rel,
+                f"Description is {len(description)} chars — every session pays for this whether "
+                f"or not the skill fires; aim under {WARN_DESCRIPTION_LENGTH}",
             )
 
     check_line_count(skill_file, repo, content, report)

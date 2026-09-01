@@ -74,6 +74,13 @@ The `description` field controls when the skill is auto-triggered. Write it as t
 - No frontmatter keys the harness ignores, e.g. `when_to_use` — triggers must live in `description`
 - Helper scripts declare third-party dependencies via PEP 723 inline metadata, so `uv run <script>`
   works with no setup (imports guarded by `except ImportError` are exempt)
+- `description` under 500 characters — descriptions load every session, so length is a standing
+  context cost, not a per-use one
+
+## Installing skills locally
+
+`./scripts/install.sh --list | --all | <names> | --uninstall | --dry-run`, with `--tree gemini` for
+the other tree. Symlinks rather than copies, and never touches a path it did not create.
 
 Run it before committing any skill change. It is the guard against re-syncing
 upstream content that reintroduces fixed defects — run `--tree gemini` after
