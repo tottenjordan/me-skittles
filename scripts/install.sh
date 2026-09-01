@@ -30,6 +30,7 @@ ALL=0
 SELECTED=()
 GROUP_ARGS=()
 GROUPS_TOML="$REPO/groups.toml"
+GROUPS_PARSER="$REPO/scripts/parse-groups.awk"
 
 # Plugin bundles hold sub-skills under skills/ and are installed through the
 # marketplace, not by symlinking the bundle directory.
@@ -96,33 +97,24 @@ mapfile -t AVAILABLE < <(cd "$SRC" && find . -maxdepth 1 -mindepth 1 -type d -pr
 
 # --- groups -----------------------------------------------------------------
 #
-# groups.toml is a flat array-of-tables: one [[group]] per (tree, name), with
-# one skill per line inside `skills = [ ... ]`. scripts/validate-skills.py
-# enforces that shape in CI — no multi-line strings, nothing after the opening
-# bracket, one quoted name per line — which is what lets awk read it here and
-# keeps this script dependency-free: a partly inline `skills = [ "a", "b",` is
-# valid TOML whose opening line awk skips whole, silently installing a subset.
-# Any other line the parser does not recognise is ignored. Flattened to
-# tree/group/skill triples.
+# groups.toml is read by scripts/parse-groups.awk, which flattens it to
+# tree/group/skill triples so this script needs no TOML library. That program
+# lives in its own file because scripts/validate-skills.py runs the *same* file
+# in CI and diffs its output against Python's tomllib. So the guarantee here is
+# not "the manifest is written in some blessed shape" but the stronger and
+# simpler one: this parser and a real TOML parser agree about what the file
+# says. Anything either one sees differently fails the build.
 parse_groups() {
   [ -f "$GROUPS_TOML" ] || return 0
-  awk '
-    function qval(line) {
-      return match(line, /"[^"]*"/) ? substr(line, RSTART + 1, RLENGTH - 2) : ""
-    }
-    /^[[:space:]]*\[\[group\]\]/       { name = ""; tree = ""; in_skills = 0; next }
-    /^[[:space:]]*name[[:space:]]*=/   { name = qval($0); next }
-    /^[[:space:]]*tree[[:space:]]*=/   { tree = qval($0); next }
-    /^[[:space:]]*skills[[:space:]]*=/ { in_skills = 1; next }
-    !in_skills                         { next }
-    /^[[:space:]]*\]/                  { in_skills = 0; next }
-    {
-      skill = qval($0)
-      if (tree != "" && name != "" && skill != "")
-        printf "%s\t%s\t%s\n", tree, name, skill
-    }
-  ' "$GROUPS_TOML"
+  awk -f "$GROUPS_PARSER" "$GROUPS_TOML"
 }
+
+# Checked here rather than inside parse_groups: that runs in a subshell under
+# the process substitution below, where die() could not stop the script — a
+# missing parser would just look like a manifest with no groups.
+if [ -f "$GROUPS_TOML" ] && [ ! -f "$GROUPS_PARSER" ]; then
+  die "missing $GROUPS_PARSER, needed to read $GROUPS_TOML"
+fi
 
 # Group membership for $TREE only. GROUP_ORDER keeps groups.toml's order so
 # --list reads the same way the file does.
@@ -136,7 +128,18 @@ while IFS=$'\t' read -r _tree _group _skill; do
   GROUP_SKILLS["$_group"]="${GROUP_SKILLS[$_group]:-}$_skill"$'\n'
 done < <(parse_groups)
 
-group_names() { printf '%s' "${GROUP_ORDER[*]:-none}"; }
+# Why a --group name did not resolve. "available: none" is ambiguous between
+# three different fixes, so say which one applies: there is no manifest, the
+# manifest has nothing for this tree, or the name is simply a typo.
+groups_available() {
+  if [ ! -f "$GROUPS_TOML" ]; then
+    printf 'no groups are defined: %s does not exist' "$GROUPS_TOML"
+  elif [ "${#GROUP_ORDER[@]}" -eq 0 ]; then
+    printf '%s defines no groups for tree %s' "$GROUPS_TOML" "$TREE"
+  else
+    printf 'available: %s' "${GROUP_ORDER[*]}"
+  fi
+}
 
 if [ "$MODE" = "list" ]; then
   printf '%s -> %s\n\n' "$SRC" "$DEST"
@@ -153,13 +156,19 @@ if [ "$MODE" = "list" ]; then
     printf '\n'
     for g in "${GROUP_ORDER[@]}"; do
       mapfile -t gskills <<< "${GROUP_SKILLS[$g]}"
-      total=0 have=0
+      # Bundles are never symlinked, so counting them in the total makes a
+      # fully installed group read as partial (4 of 6) forever, inviting a
+      # pointless re-run. Report them separately instead of hiding them.
+      total=0 have=0 bundled=0
       for s in "${gskills[@]}"; do
         [ -n "$s" ] || continue
+        if is_bundle "$s"; then bundled=$((bundled+1)); continue; fi
         total=$((total+1))
         if [ "$(status_of "$s")" = "installed" ]; then have=$((have+1)); fi
       done
-      printf '  %-10s %2s skills %3s installed\n' "$g" "$total" "$have"
+      via=""
+      if [ "$bundled" -gt 0 ]; then via=" (+$bundled via marketplace)"; fi
+      printf '  %-10s %2s skills %3s installed%s\n' "$g" "$total" "$have" "$via"
     done
   fi
   exit 0
@@ -174,7 +183,7 @@ elif [ "${#GROUP_ARGS[@]}" -gt 0 ] || [ "${#SELECTED[@]}" -gt 0 ]; then
     [ -n "$g" ] || continue
     # An unknown group must be loud: installing nothing would look like success.
     [ -n "${GROUP_SKILLS[$g]+x}" ] ||
-      die "no group '$g' for tree '$TREE' — available: $(group_names)"
+      die "no group '$g' for tree '$TREE' — $(groups_available)"
     while read -r s; do
       [ -n "$s" ] || continue
       [ -d "$SRC/$s" ] || die "group '$g' lists a skill missing from $TREE/: $s"

@@ -304,7 +304,7 @@ Runs in CI on every push and pull request, alongside the bundle-specific validat
 | No Claude terminology under `gemini/` | That tree is a port, not a copy |
 | No dangling symlinks, no committed build artifacts | Both have shipped broken skills before |
 | Correct plugin manifest per tree | `.claude-plugin/` vs `.gemini-plugin/` |
-| `groups.toml` well-formed, complete, and disjoint | Every skill in exactly one group per tree, or `--group` and `--list` quietly omit it. The installer parses it with awk, so the shape awk needs is enforced here rather than there |
+| `groups.toml` well-formed, complete, and disjoint | Every skill in exactly one group per tree, or `--group` and `--list` quietly omit it. The installer parses it with `scripts/parse-groups.awk`, so this runs that same file and requires its output to match `tomllib`'s — legal TOML the installer would read differently fails here rather than silently there |
 | The catalogue names no skill absent from both trees | Readers install by name; a dangling row sends them after something that was deleted |
 
 **Warnings** — surfaced, don't fail:

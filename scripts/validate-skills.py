@@ -16,9 +16,9 @@ Checks the invariants that make a skill loadable and keep the two trees honest:
 - Plugin bundles use the manifest directory matching their tree
 - SKILL.md stays under 500 lines (warns at 450) so progressive disclosure is preserved
 - No retired model IDs outside of text that discusses their retirement
-- groups.toml parses, has every required key, stays in the flat shape the
-  installer's awk parser needs, and puts each skill directory in exactly one
-  group for its tree
+- groups.toml parses, has every required key, puts each skill directory in
+  exactly one group for its tree, and means the same thing to tomllib as it
+  does to the installer's awk parser (scripts/parse-groups.awk, run here)
 - The README skill catalogue names no skill that does not exist
 - Descriptions stay under 500 chars — they are loaded every session (warning)
 - Helper scripts declare their third-party dependencies (warning)
@@ -43,6 +43,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -61,7 +62,7 @@ MIN_DESCRIPTION_LENGTH = 20
 
 # Every skill's description is loaded on every session, whether or not the skill
 # fires — so description length is a fixed context tax that scales with the
-# catalogue. At 117 skills the two trees already cost roughly 1.9k and 5.2k
+# catalogue. At 117 skills the two trees already cost roughly 1.8k and 5.2k
 # tokens per session. 1024 is the API ceiling; this is the budget that keeps the
 # total sane, and the guidance calls a description "one line".
 WARN_DESCRIPTION_LENGTH = 500
@@ -73,6 +74,17 @@ WARN_DESCRIPTION_LENGTH = 500
 MAX_SKILL_LINES = 500
 WARN_SKILL_LINES = 450
 NAME_PATTERN = re.compile(r"^[a-z0-9-]{1,64}$")
+
+# Stricter form, used only when deciding whether a backticked token in the
+# README catalogue is a skill name. NAME_PATTERN also accepts leading, trailing
+# and doubled hyphens, so a flag such as `--group` in a catalogue cell would be
+# read as a skill and reported as a dangling entry. Frontmatter `name` keeps the
+# looser pattern, which is the rule that field is actually held to.
+#
+# The length lookahead keeps this strictly narrower than NAME_PATTERN: it must
+# only ever reject more tokens, never accept ones the old scan skipped.
+CATALOGUE_NAME_PATTERN = re.compile(r"^(?=.{1,64}$)[a-z0-9]+(?:-[a-z0-9]+)*$")
+
 LINK_PATTERN = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
 ARTIFACT_GLOBS = ("**/__pycache__", "**/*.pyc")
 
@@ -139,9 +151,15 @@ PLUGIN_DIR = {"claude": ".claude-plugin", "gemini": ".gemini-plugin"}
 
 # groups.toml drives `./scripts/install.sh --group`, and the installer reads it
 # with awk rather than a TOML parser. These checks are what make that safe: the
-# manifest is guaranteed here to be well-formed, complete and disjoint.
+# manifest is guaranteed here to be well-formed, complete, disjoint, and to mean
+# the same thing to that awk program as it does to tomllib.
 GROUPS_FILE = "groups.toml"
+GROUPS_PARSER = "scripts/parse-groups.awk"
 GROUP_REQUIRED_KEYS = ("name", "tree", "description", "skills")
+
+# How many disagreeing entries to name before truncating; the first handful
+# already identify the cause.
+MAX_REPORTED_TRIPLES = 12
 
 # The README's catalogue is checked against the trees because it has shipped
 # entries for skills that did not exist -- four dangling `adk-*` rows survived
@@ -153,17 +171,6 @@ BACKTICKED = re.compile(r"`([^`\n]+)`")
 # A parenthesised annotation on a catalogue entry, e.g. `gcp-data-pipelines`
 # (router) or `property-based-testing` *(bundle)*.
 CELL_ANNOTATION = re.compile(r"\*?\([^)]*\)\*?")
-
-# The installer reads groups.toml with awk, line by line, so the file has to be
-# not just valid TOML but written in the one shape awk can follow: `skills = [`
-# opening the array, one quoted name per line, `]` closing it. The case this
-# catches is the *partly* inline array — `skills = [ "a", "b",` with the rest on
-# later lines. It is legal TOML, and awk skips that opening line whole, so the
-# group installs only the names below it and still exits 0. (A fully inline
-# array is at least loud: no group registers, so `--group` rejects the name.)
-GROUPS_SKILLS_OPEN = re.compile(r"^\s*skills\s*=\s*(.*)$")
-GROUPS_SKILL_ITEM = re.compile(r'^\s*"[^"]*",?\s*$')
-GROUPS_ARRAY_CLOSE = re.compile(r"^\s*\]")
 
 
 @dataclass
@@ -505,7 +512,8 @@ def check_groups(repo: Path, report: Report) -> None:
     `./scripts/install.sh --group` reads this manifest with awk, so it cannot
     validate the file it parses. Everything that makes the awk parser safe is
     enforced here instead: the file exists, parses as TOML, every entry carries
-    all four required keys, names a real tree, and lists only skills that exist.
+    all four required keys, names a real tree, lists only skills that exist, and
+    reads identically through the installer's parser and through tomllib.
 
     Completeness and disjointness are the load-bearing part. A skill in no group
     is unreachable via `--group` and shows as `-` in `--list`; a skill in two
@@ -524,7 +532,7 @@ def check_groups(repo: Path, report: Report) -> None:
         report.error(GROUPS_FILE, f"Unparseable: {exc}")
         return
 
-    check_groups_awk_shape(text, report)
+    check_groups_parser_agreement(repo, text, data, report)
 
     entries = data.get("group")
     if not isinstance(entries, list) or not entries:
@@ -590,20 +598,102 @@ def check_groups(repo: Path, report: Report) -> None:
                 )
 
 
-def check_groups_awk_shape(text: str, report: Report) -> None:
-    """Keep groups.toml inside the subset of TOML the installer's awk can read.
+def toml_group_triples(data: dict) -> set[tuple[str, str, str]]:
+    """(tree, group, skill) triples as a real TOML parser reads groups.toml.
 
-    install.sh parses this file with a line-based awk program so it stays
-    dependency-free. That only works because the file is written flat: no
-    multi-line strings, `skills = [` on its own line, and one quoted name per
-    line after it.
+    Non-string scalars are stringified rather than dropped: `name = 12` is legal
+    TOML that declares a group, and pretending it does not exist here would hide
+    it from the comparison below — which is precisely the case that needs to be
+    caught, since the installer's parser cannot see it at all.
+    """
+    triples: set[tuple[str, str, str]] = set()
+    entries = data.get("group")
+    if not isinstance(entries, list):
+        return triples
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        name, tree, skills = entry.get("name"), entry.get("tree"), entry.get("skills")
+        if name is None or tree is None or not isinstance(skills, list):
+            continue
+        if isinstance(name, (list, dict)) or isinstance(tree, (list, dict)):
+            continue
+        for skill in skills:
+            if not isinstance(skill, (list, dict)):
+                triples.add((str(tree), str(name), str(skill)))
+    return triples
 
-    The silent failure this prevents is a partly inline array — `skills = [ "a",
-    "b",` continuing on later lines. It parses fine as TOML, but awk skips the
-    opening line whole, so the installer links only the names below it, prints
-    its usual summary and exits 0. A fully inline array is not the danger: it
-    registers no group at all, and `--group` then fails with an unknown-group
-    error.
+
+def awk_group_triples(repo: Path, report: Report) -> set[tuple[str, str, str]] | None:
+    """Run the installer's own parser over groups.toml. None if it could not run."""
+    parser = repo / GROUPS_PARSER
+    if not parser.is_file():
+        report.error(
+            GROUPS_PARSER,
+            "Missing — `./scripts/install.sh --group` reads groups.toml with this awk program, "
+            "and this validator runs it to check the two agree",
+        )
+        return None
+    try:
+        proc = subprocess.run(
+            ["awk", "-f", str(parser), str(repo / GROUPS_FILE)],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError as exc:
+        report.error(
+            GROUPS_PARSER,
+            f"Could not run `awk`: {exc} — awk is already a hard dependency of "
+            "./scripts/install.sh, so it must be available to validate the manifest",
+        )
+        return None
+    if proc.returncode != 0:
+        report.error(
+            GROUPS_PARSER,
+            f"awk exited {proc.returncode} on {GROUPS_FILE}: {proc.stderr.strip() or 'no output'}",
+        )
+        return None
+
+    triples: set[tuple[str, str, str]] = set()
+    for num, line in enumerate(proc.stdout.splitlines(), start=1):
+        fields = line.split("\t")
+        if len(fields) != 3:
+            report.error(GROUPS_PARSER, f"Emitted a non-triple on output line {num}: {line!r}")
+            continue
+        triples.add((fields[0], fields[1], fields[2]))
+    return triples
+
+
+def format_triples(triples: list[tuple[str, str, str]]) -> str:
+    """Render disagreeing entries as tree/group:skill, truncated so a whole-file
+    disagreement does not bury the cause under 85 near-identical lines."""
+    head = triples[:MAX_REPORTED_TRIPLES]
+    shown = ", ".join(f"{tree}/{group}:{skill}" for tree, group, skill in head)
+    if len(triples) > MAX_REPORTED_TRIPLES:
+        shown += f", … ({len(triples) - MAX_REPORTED_TRIPLES} more)"
+    return shown
+
+
+def check_groups_parser_agreement(repo: Path, text: str, data: dict, report: Report) -> None:
+    """groups.toml must mean the same thing to awk as it does to tomllib.
+
+    `./scripts/install.sh` reads this manifest with scripts/parse-groups.awk so
+    it needs no TOML library, which leaves a gap: legal TOML that awk reads
+    differently. The old guard here re-encoded awk's shape rules as regexes and
+    drifted from them — it never checked that `name` and `tree` were *double*
+    quoted, so `name = 'agents'` or `name = 12` validated clean while `--group
+    agents` failed with "no group 'agents'".
+
+    So compare instead of re-derive: run the very same awk file the installer
+    runs, and require its (tree, group, skill) triples to equal tomllib's.
+    Nothing to keep in sync, and the message names the entries that disagree.
+
+    Multi-line strings stay a separate rule. Not every one of them changes awk's
+    output — a multi-line `description` happens to be invisible to it, so the
+    differential would pass — but the parser is line-oriented and any value
+    spanning lines is one edit away from being read as a `name`, `tree` or
+    `skills` line.
     """
     if '"""' in text or "'''" in text:
         report.error(
@@ -611,31 +701,31 @@ def check_groups_awk_shape(text: str, report: Report) -> None:
             "Multi-line strings break the installer's line-based awk parser — keep every "
             "value on one line",
         )
-    in_skills = False
-    for num, line in enumerate(text.splitlines(), start=1):
-        if in_skills:
-            if GROUPS_ARRAY_CLOSE.match(line):
-                in_skills = False
-            elif line.strip() and not GROUPS_SKILL_ITEM.match(line):
-                report.error(
-                    f"{GROUPS_FILE}:{num}",
-                    "Expected one quoted skill name per line inside `skills`, got: "
-                    f"{line.strip()!r}",
-                )
-            continue
-        opened = GROUPS_SKILLS_OPEN.match(line)
-        if opened:
-            if opened.group(1).strip() != "[":
-                report.error(
-                    f"{GROUPS_FILE}:{num}",
-                    "`skills = [` must open the array with nothing after the bracket — the "
-                    "installer's awk parser skips this line whole, so any name on it is "
-                    "silently dropped",
-                )
-            else:
-                in_skills = True
-    if in_skills:
-        report.error(GROUPS_FILE, "Unclosed `skills` array")
+
+    from_awk = awk_group_triples(repo, report)
+    if from_awk is None:
+        return
+    from_toml = toml_group_triples(data)
+
+    missed = sorted(from_toml - from_awk)
+    if missed:
+        report.error(
+            GROUPS_FILE,
+            f"{GROUPS_PARSER} does not see {len(missed)} entr"
+            f"{'y' if len(missed) == 1 else 'ies'} that tomllib reads here, so the installer "
+            f"would silently skip {'it' if len(missed) == 1 else 'them'}: {format_triples(missed)}"
+            " — that parser matches double-quoted strings, one skill per line, with nothing "
+            "after `skills = [`",
+        )
+
+    invented = sorted(from_awk - from_toml)
+    if invented:
+        report.error(
+            GROUPS_FILE,
+            f"{GROUPS_PARSER} reads {len(invented)} entr"
+            f"{'y' if len(invented) == 1 else 'ies'} that are not in the parsed TOML, so the "
+            f"installer would act on something this file does not say: {format_triples(invented)}",
+        )
 
 
 def catalogue_entries(section: str) -> set[str]:
@@ -660,7 +750,7 @@ def catalogue_entries(section: str) -> set[str]:
         if not line.lstrip().startswith("|"):
             continue
         for cell in line.strip().strip("|").split("|"):
-            names = [n for n in BACKTICKED.findall(cell) if NAME_PATTERN.match(n)]
+            names = [n for n in BACKTICKED.findall(cell) if CATALOGUE_NAME_PATTERN.match(n)]
             if not names:
                 continue
             remainder = BACKTICKED.sub("", cell)
@@ -706,7 +796,7 @@ def check_readme_catalogue(repo: Path, report: Report) -> None:
             "or restore the skill",
         )
 
-    mentioned = {n for n in BACKTICKED.findall(section) if NAME_PATTERN.match(n)}
+    mentioned = {n for n in BACKTICKED.findall(section) if CATALOGUE_NAME_PATTERN.match(n)}
     for tree, skills in sorted(installable.items()):
         for skill in sorted(skills - mentioned):
             report.warn(README_FILE, f"{tree}/{skill} is missing from the skill catalogue")
