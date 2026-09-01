@@ -15,6 +15,7 @@ uv run scripts/validate-skills.py     # 117 skills, 0 errors
 - [How skills work](#how-skills-work)
 - [Setup](#setup)
 - [Skill catalogue](#skill-catalogue)
+- [Context cost](#context-cost)
 - [Repository layout](#repository-layout)
 - [Validation](#validation)
 - [Contributing a skill](#contributing-a-skill)
@@ -55,17 +56,17 @@ Claude Code discovers skills **by directory**, not via a config setting. Each sk
 `<project>/.claude/skills/<name>/SKILL.md` (that project only).
 
 ```bash
-REPO="$(pwd)"          # run from the repo root
-mkdir -p ~/.claude/skills
-
-# One skill
-ln -s "$REPO/claude/writing-skills" ~/.claude/skills/writing-skills
-
-# All of them
-for d in "$REPO"/claude/*/; do
-  ln -s "$d" ~/.claude/skills/"$(basename "$d")"
-done
+./scripts/install.sh --list                 # what's available, what's installed
+./scripts/install.sh writing-skills adk     # install a few
+./scripts/install.sh --all                  # install everything
+./scripts/install.sh --all --dry-run        # preview first
+./scripts/install.sh --uninstall --all      # remove
 ```
+
+The installer symlinks, so edits in this repo take effect immediately with no reinstall step. It
+is idempotent, repairs broken links, and **only ever removes links it created** — a real directory,
+or a symlink pointing outside this repo, is reported and left alone. Plugin bundles are skipped
+with an explanation.
 
 Skills auto-trigger from their `description`; user-invocable ones are also slash commands
 (`/paperbanana`). Run `/doctor` to confirm they loaded.
@@ -179,6 +180,29 @@ right tool for a given job.
 
 ---
 
+## Context cost
+
+Every skill's `description` is loaded into context at the start of **every session**, whether or not
+the skill fires. Bodies are loaded only on trigger. So the catalogue has a fixed cost that grows
+with its size:
+
+| | Skills | Description budget | When one fires |
+|---|---|---|---|
+| `claude/` | 26 top-level | ~1.9k tokens per session | +2.4k tokens median |
+| `gemini/` | 55 top-level | ~5.2k tokens per session | +2.0k tokens median |
+
+Two practical consequences:
+
+- **Install what you use.** `./scripts/install.sh --list` then name the skills you want, rather than
+  `--all`, if session context is tight. Installing the whole Gemini tree costs ~5k tokens before you
+  type anything.
+- **Keep descriptions tight.** The validator warns above 500 characters. Ten skills currently exceed
+  it, all vendored from Google — left at upstream's wording deliberately, since editing them
+  complicates re-sync.
+
+Bodies are capped at 500 lines for the same reason: `SKILL.md` loads in full, so detail belongs in
+`references/`, which loads only when the agent follows the link.
+
 ## Repository layout
 
 ```
@@ -241,6 +265,7 @@ Runs in CI on every push and pull request, alongside the bundle-specific validat
 **Warnings** — surfaced, don't fail:
 
 - `SKILL.md` over 450 lines, approaching the limit
+- A `description` over 500 characters — it is paid for on every session
 - Helper scripts importing undeclared third-party packages
 - Frontmatter keys the harness ignores (`when_to_use`, `tools`)
 - Relative links that don't resolve
