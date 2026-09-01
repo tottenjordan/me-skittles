@@ -98,8 +98,10 @@ mapfile -t AVAILABLE < <(cd "$SRC" && find . -maxdepth 1 -mindepth 1 -type d -pr
 #
 # groups.toml is a flat array-of-tables: one [[group]] per (tree, name), with
 # one skill per line inside `skills = [ ... ]` — no nested tables, no multi-line
-# strings. That shape is validated in CI, which is what lets awk read it here
-# and keeps this script dependency-free. Flattened to tree/group/skill triples.
+# strings. scripts/validate-skills.py enforces exactly that shape in CI, which is
+# what lets awk read it here and keeps this script dependency-free: an inline
+# `skills = ["a", "b"]` is valid TOML that awk would read as an empty group, so
+# the validator rejects it. Flattened to tree/group/skill triples.
 parse_groups() {
   [ -f "$GROUPS_TOML" ] || return 0
   awk '

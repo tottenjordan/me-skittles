@@ -91,6 +91,11 @@ push and PR. It enforces:
 - No retired model IDs outside text discussing their retirement
 - No frontmatter keys the harness ignores, such as `when_to_use` — triggers belong in `description`
 - Helper scripts declaring third-party dependencies via PEP 723, so `uv run <script>` needs no setup
+- `groups.toml` parsing, carrying every required key, and putting each skill directory in exactly
+  one group for its tree — so adding a skill without grouping it fails the build. Also the flat
+  shape the installer's awk parser needs: no inline arrays, no multi-line strings
+- The README skill catalogue naming no skill that is absent from both trees (a skill the catalogue
+  omits is a warning)
 
 Run it before committing any skill change. It is also the guard against re-syncing upstream content
 that reintroduces already-fixed defects — run `--tree gemini` after pulling from any upstream skills
