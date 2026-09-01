@@ -44,10 +44,14 @@ import argparse
 import json
 import re
 import sys
-import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 
+# `tomllib` is stdlib from 3.11, which the PEP 723 header above requires. ruff
+# does not read that header, so under its default target version it sorts the
+# import here rather than into the stdlib block above; keep it here so
+# `uvx ruff check` stays clean without a config file.
+import tomllib
 import yaml
 
 TREES = ("claude", "gemini")
@@ -152,9 +156,11 @@ CELL_ANNOTATION = re.compile(r"\*?\([^)]*\)\*?")
 
 # The installer reads groups.toml with awk, line by line, so the file has to be
 # not just valid TOML but written in the one shape awk can follow: `skills = [`
-# opening the array, one quoted name per line, `]` closing it. `skills = ["a"]`
-# is legal TOML that the awk parser reads as an empty group — it would install
-# nothing and look like success.
+# opening the array, one quoted name per line, `]` closing it. The case this
+# catches is the *partly* inline array — `skills = [ "a", "b",` with the rest on
+# later lines. It is legal TOML, and awk skips that opening line whole, so the
+# group installs only the names below it and still exits 0. (A fully inline
+# array is at least loud: no group registers, so `--group` rejects the name.)
 GROUPS_SKILLS_OPEN = re.compile(r"^\s*skills\s*=\s*(.*)$")
 GROUPS_SKILL_ITEM = re.compile(r'^\s*"[^"]*",?\s*$')
 GROUPS_ARRAY_CLOSE = re.compile(r"^\s*\]")
@@ -590,8 +596,14 @@ def check_groups_awk_shape(text: str, report: Report) -> None:
     install.sh parses this file with a line-based awk program so it stays
     dependency-free. That only works because the file is written flat: no
     multi-line strings, `skills = [` on its own line, and one quoted name per
-    line after it. Valid TOML outside that subset parses fine here and yields an
-    empty group in the installer, which installs nothing and reports success.
+    line after it.
+
+    The silent failure this prevents is a partly inline array — `skills = [ "a",
+    "b",` continuing on later lines. It parses fine as TOML, but awk skips the
+    opening line whole, so the installer links only the names below it, prints
+    its usual summary and exits 0. A fully inline array is not the danger: it
+    registers no group at all, and `--group` then fails with an unknown-group
+    error.
     """
     if '"""' in text or "'''" in text:
         report.error(
@@ -617,7 +629,8 @@ def check_groups_awk_shape(text: str, report: Report) -> None:
                 report.error(
                     f"{GROUPS_FILE}:{num}",
                     "`skills = [` must open the array with nothing after the bracket — the "
-                    "installer's awk parser reads an inline array as an empty group",
+                    "installer's awk parser skips this line whole, so any name on it is "
+                    "silently dropped",
                 )
             else:
                 in_skills = True
