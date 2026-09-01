@@ -22,8 +22,9 @@ Checks the invariants that make a skill loadable and keep the two trees honest:
 - The README skill catalogue names no skill that does not exist, and files each
   skill under the section for the group that actually installs it
 - Counts stated in prose in README.md, CLAUDE.md, GEMINI.md and ATTRIBUTION.md
-  agree with scripts/repo_facts.py. Only those four are checked: docs/notes/ and
-  docs/plans/ are point-in-time records and are exempt by name (see LIVE_DOCS)
+  agree with scripts/repo_facts.py. Those four (see LIVE_DOCS), plus any plan
+  that opted in with a `<!-- live-counts -->` line; docs/notes/ and the rest of
+  docs/plans/ are point-in-time records and stay exempt (see PLAN_LIVE_MARKER)
 - Descriptions stay under 500 chars — they are loaded every session (warning)
 - Helper scripts declare their third-party dependencies (warning)
 - No frontmatter keys the harness silently ignores (warning)
@@ -69,12 +70,15 @@ import tomllib
 # pyyaml stays declared in the PEP 723 header above even though nothing here
 # imports yaml any more — repo_facts does, so `uv run` still has to install it.
 from repo_facts import (
+    TOKEN_STEP,
     TREES,
     WARN_DESCRIPTION_LENGTH,
+    estimate_tokens,
     facts,
     find_skills,
     installable_skills,
     parse_frontmatter,
+    percent_of,
 )
 
 MAX_NAME_LENGTH = 64
@@ -228,6 +232,19 @@ SECTION_LABEL_SPLIT = re.compile(r"[—–]|\*?\(")
 # happen to walk means the exemption survives someone adding a new check, and
 # means a new live document has to be added here deliberately.
 LIVE_DOCS = ("README.md", "CLAUDE.md", "GEMINI.md", "ATTRIBUTION.md")
+
+# A plan is a live document for the few days it is being executed and a
+# historical record forever after, and the blanket docs/plans/ exemption above
+# fits only the second half. A plan opts into the first half by carrying this
+# marker line; `check_stated_counts` then checks its numbers alongside LIVE_DOCS.
+#
+# Opting *out* is deleting the marker, which is deliberately the cheaper edit:
+# a finished plan that forgot to opt out fails with a one-line fix, and the
+# stale number that justified the work is never rewritten. Same explicit-opt-in
+# shape as CATALOGUE_SECTION_GROUPS and GEMINI_PURITY_ALLOWLIST — a file is only
+# ever covered because someone said so in the file.
+PLANS_DIR = "docs/plans"
+PLAN_LIVE_MARKER = "<!-- live-counts -->"
 
 # Where this file names itself, for findings whose fix is in this file.
 SELF = "scripts/validate-skills.py"
@@ -978,18 +995,63 @@ def _gcp_group(data: dict, _match: re.Match[str]) -> int | None:
     return None if group is None else group["skill_count"]
 
 
+def _gcp_share_of_gemini(data: dict, _match: re.Match[str]) -> int | None:
+    """The `gcp` group's share of the whole gemini tree's standing cost, as a %."""
+    group = data["groups"].get(("gemini", "gcp"))
+    total = data["tokens_by_tree"].get("gemini")
+    if group is None or not total:
+        return None
+    return percent_of(group["tokens"], total)
+
+
+def _claude_agents_and_workflow(data: dict, _match: re.Match[str]) -> int | None:
+    """Standing cost of installing exactly `--group agents --group workflow`.
+
+    Summed from characters and rounded once, not from the two published
+    figures: rounding twice can land 10 tokens off, the same trap repo_facts
+    avoids by computing `tokens` and `tokens_rounded` independently.
+    """
+    groups = [data["groups"].get(("claude", name)) for name in ("agents", "workflow")]
+    if any(group is None for group in groups):
+        return None
+    return estimate_tokens(sum(group["description_chars"] for group in groups), TOKEN_STEP)
+
+
+def _claude_tree_tokens_k(data: dict, _match: re.Match[str]) -> str | None:
+    """The claude tree's standing cost as the docs quote it: the string `1.8k`.
+
+    A string, not an int, because the sentence quotes the rendered figure. The
+    comparison is textual, so `~1.80k` would be reported too.
+    """
+    return data["tokens_k_by_tree"].get("claude")
+
+
 @dataclass(frozen=True)
 class StatedCount:
     """A phrase that states a derived number, bound to the fact it states.
 
-    `pattern` must capture the number as `n`, and may capture a tree as `tree`.
-    `actual` returns the fact from repo_facts, or None when the match turns out
-    not to name anything derivable after all — in which case nothing is reported.
+    `pattern` must capture the stated value as `n`, and may capture a tree as
+    `tree`. `actual` returns the fact from repo_facts, or None when the match
+    turns out not to name anything derivable after all — in which case nothing
+    is reported.
+
+    `actual` may return a **string** rather than an int, for figures the docs
+    quote pre-formatted (`~1.8k`). The comparison is then textual against the
+    captured `n`, so the rendering is checked along with the number.
+
+    `expect` is how many sites across the checked documents this phrasing is
+    known to match. It defaults to 1, and it exists because `matched` used to
+    be a set: a pattern with four sites was only reported retired once *all
+    four* stopped matching, so rewording one of them was silent. Counting
+    against `expect` makes each site's disappearance visible. Getting `expect`
+    wrong is self-correcting — too low and a genuine retirement goes unwarned,
+    too high and the warning fires until someone fixes the number here.
     """
 
     pattern: re.Pattern[str]
-    actual: Callable[[dict, re.Match[str]], int | None]
+    actual: Callable[[dict, re.Match[str]], int | str | None]
     what: str
+    expect: int = 1
 
 
 # Prose the generator cannot reach, matched phrase by phrase.
@@ -1004,7 +1066,9 @@ class StatedCount:
 # check_script_dependencies makes when it exempts guarded imports.
 #
 # A phrasing that stops matching is warned about rather than silently dropped,
-# so rewording the prose cannot quietly retire the check on it.
+# so rewording the prose cannot quietly retire the check on it. `expect` is what
+# makes that true per *site* rather than per pattern — four documents say
+# `29 Google-published skills`, and rewording one of them has to be visible.
 STATED_COUNTS: tuple[StatedCount, ...] = (
     StatedCount(
         re.compile(r"\*\*(?P<n>\d+) skills\*\* across"),
@@ -1020,16 +1084,19 @@ STATED_COUNTS: tuple[StatedCount, ...] = (
         re.compile(r"`(?P<tree>claude|gemini)/` \((?P<n>\d+)\)"),
         _tree_skills,
         "the number of top-level skill directories in that tree",
+        expect=2,  # README.md, one per tree, on one line
     ),
     StatedCount(
         re.compile(r"`(?P<tree>claude|gemini)/`[^`\n]*?(?P<n>\d+) directories"),
         _tree_skills,
         "the number of top-level skill directories in that tree",
+        expect=2,  # GEMINI.md, one per tree
     ),
     StatedCount(
         re.compile(r"^(?P<tree>claude|gemini)/\s+(?P<n>\d+) skills for"),
         _tree_skills,
         "the number of top-level skill directories in that tree",
+        expect=2,  # README.md layout block, one per tree
     ),
     StatedCount(
         re.compile(r"The `(?P<tree>claude|gemini)/` tree[^\n]*?\*\*(?P<n>\d+) skills\*\*"),
@@ -1040,6 +1107,7 @@ STATED_COUNTS: tuple[StatedCount, ...] = (
         re.compile(r"(?P<n>\d+) Google-published skills"),
         _google_published,
         "the number of skills declaring `publisher: google`",
+        expect=4,  # README.md, CLAUDE.md, GEMINI.md twice
     ),
     StatedCount(
         re.compile(r"(?P<n>\d+)-skill Google Cloud family"),
@@ -1071,7 +1139,48 @@ STATED_COUNTS: tuple[StatedCount, ...] = (
         _shared_skills,
         "the number of skills present in both trees",
     ),
+    # The three below sit in the paragraph immediately under the generated cost
+    # tables. That is the exact position docs/notes/documentation-drift.md
+    # names as the failure mode of generation — the marked region stays right
+    # while the sentence beside it rots — so leaving the showcase unchecked
+    # would have been the design demonstrating its own bug.
+    StatedCount(
+        re.compile(r"\*\*(?P<n>\d+)% of the Gemini tree's standing cost\*\*"),
+        _gcp_share_of_gemini,
+        "the gemini `gcp` group's share of that tree's description budget",
+    ),
+    StatedCount(
+        re.compile(r"`--group agents --group workflow` costs ~(?P<n>[\d,]+)"),
+        _claude_agents_and_workflow,
+        "the combined description budget of the claude `agents` and `workflow` groups",
+    ),
+    StatedCount(
+        re.compile(r"against ~(?P<n>[\d.]+k) for `--all`"),
+        _claude_tree_tokens_k,
+        "the claude tree's whole description budget",
+    ),
 )
+
+
+def opted_in_plans(repo: Path) -> list[str]:
+    """Plans carrying PLAN_LIVE_MARKER, which asks for their numbers to be checked.
+
+    docs/plans/ is exempt by default because a plan records what was true when
+    it was written. A plan being *executed* is the exception, and it says so in
+    itself rather than in a list here — see PLAN_LIVE_MARKER.
+    """
+    plans = repo / PLANS_DIR
+    if not plans.is_dir():
+        return []
+    marked = []
+    for path in sorted(plans.rglob("*.md")):
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            continue
+        if PLAN_LIVE_MARKER in text:
+            marked.append(path.relative_to(repo).as_posix())
+    return marked
 
 
 def check_stated_counts(repo: Path, report: Report) -> None:
@@ -1083,12 +1192,18 @@ def check_stated_counts(repo: Path, report: Report) -> None:
     the writing around them. They are the ones that went stale, so they are
     checked instead.
 
-    Only LIVE_DOCS are looked at: docs/notes/ and docs/plans/ state numbers that
-    were true when written and must stay that way. See LIVE_DOCS for why.
+    The documents checked are LIVE_DOCS, plus any plan that opted in with
+    PLAN_LIVE_MARKER. Everything else under docs/notes/ and docs/plans/ states
+    numbers that were true when written and must stay that way; see LIVE_DOCS.
+
+    A phrasing that stops matching as many sites as its `expect` says warns,
+    rather than silently retiring the check on that number. Only LIVE_DOCS
+    sites count toward `expect`: an opted-in plan is transient, and letting it
+    contribute would let a plan mask a live document's reworded sentence.
     """
     data = repo_facts_for(repo)
-    matched: set[str] = set()
-    for doc in LIVE_DOCS:
+    sites: dict[str, int] = {}
+    for doc in list(LIVE_DOCS) + opted_in_plans(repo):
         path = repo / doc
         if not path.is_file():
             continue
@@ -1102,8 +1217,13 @@ def check_stated_counts(repo: Path, report: Report) -> None:
                     actual = rule.actual(data, match)
                     if actual is None:
                         continue
-                    matched.add(rule.pattern.pattern)
-                    stated = int(match.group("n"))
+                    if doc in LIVE_DOCS:
+                        sites[rule.pattern.pattern] = sites.get(rule.pattern.pattern, 0) + 1
+                    # `actual` is a string for figures the docs quote
+                    # pre-formatted, e.g. `~1.8k`; compare those as text so the
+                    # rendering is checked too.
+                    text = match.group("n")
+                    stated = text if isinstance(actual, str) else int(text.replace(",", ""))
                     if stated != actual:
                         report.error(
                             f"{doc}:{num}",
@@ -1112,12 +1232,14 @@ def check_stated_counts(repo: Path, report: Report) -> None:
                         )
 
     for rule in STATED_COUNTS:
-        if rule.pattern.pattern not in matched:
+        found = sites.get(rule.pattern.pattern, 0)
+        if found < rule.expect:
             report.warn(
                 SELF,
-                f"No live document matches the stated-count pattern {rule.pattern.pattern!r} "
-                f"({rule.what}) — the wording it recognised was probably edited, and that number "
-                "is no longer checked anywhere; update the pattern or drop it",
+                f"The stated-count pattern {rule.pattern.pattern!r} ({rule.what}) matches "
+                f"{found} live document site(s), expected {rule.expect} — wording it recognised "
+                "was probably edited, and that number is no longer checked there; update the "
+                "pattern, correct `expect`, or drop the rule",
             )
 
 

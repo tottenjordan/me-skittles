@@ -45,6 +45,14 @@ lesser goal, because a checker that guesses invents findings on hand-written pro
 cries wolf gets switched off. A phrasing that stops matching warns rather than silently retiring, so
 rewording cannot quietly disable the check on a number.
 
+That guarantee is **per site, not per pattern**, and getting it wrong is easy. Four documents say
+`29 Google-published skills`. The first version of the check recorded matches in a *set*, so it only
+noticed the phrasing was gone once all four sites had stopped matching — rewording one of them
+produced no warning at all, and ten of the nineteen checked sites sat behind such a pattern. Each
+rule now declares an `expect` count and the check counts matches, so a single reworded sentence is
+visible. Getting `expect` wrong is self-correcting in one direction only: too low and a retirement
+goes unnoticed, too high and the warning fires until someone reconciles it.
+
 ## Generation protects only the marked region — adjacent prose drifts freely
 
 This is the non-obvious one, and the reason the answer is *both* mechanisms.
@@ -60,6 +68,13 @@ would still have said 29 — generation would not have caught the bug that promp
 
 So: generate the regions that are pure data, and validate the prose that surrounds them. Deleting
 either tier reopens one of the three classes above.
+
+The rule applies to this repo's own showcase, which had to be pointed out. The paragraph directly
+beneath the two generated cost tables in `README.md` states three derived numbers in prose — `gcp`
+is 61% of the Gemini tree, `--group agents --group workflow` costs ~860 tokens, `--all` costs ~1.8k.
+All three were correct and none was checked: the design sitting in the trap it names, one paragraph
+below the tables that prove the point. They are `StatedCount` rules now. The `~1.8k` one compares
+the *rendered string*, not an integer, because that is the form the sentence quotes.
 
 ## The catalogue is validated, not generated
 
@@ -80,8 +95,9 @@ and why the **Method** paragraph beneath them is hand-written and outside the ma
 ## `docs/` is exempt, and that is the correct behaviour
 
 `scripts/validate-skills.py` checks stated counts only in the four documents named in its
-`LIVE_DOCS` constant — `README.md`, `CLAUDE.md`, `GEMINI.md`, `ATTRIBUTION.md`. `docs/notes/` and
-`docs/plans/` are excluded on purpose, and `scripts/sync-docs.py` writes into neither.
+`LIVE_DOCS` constant — `README.md`, `CLAUDE.md`, `GEMINI.md`, `ATTRIBUTION.md` — plus any plan that
+opts in (below). `docs/notes/` and the rest of `docs/plans/` are excluded on purpose, and
+`scripts/sync-docs.py` writes into none of them.
 
 The concrete case:
 [`docs/plans/2026-09-01-installable-skill-groups.md:20`](../plans/2026-09-01-installable-skill-groups.md)
@@ -93,12 +109,43 @@ decision on grounds it no longer states.
 The same applies throughout [decisions-not-taken.md](decisions-not-taken.md), whose figures are
 measurements-that-justified-a-decision rather than descriptions of now.
 
-**The exemption has a cost, and it is worth naming:** incident 2 happened in a plan, so the
-machinery here would not have caught it *in situ*. That is accepted rather than solved. A plan is a
-live document for the few days it is being executed and a historical record forever after, and no
-single policy fits both halves of that life. The practical mitigation is behavioural, not
-mechanical: when a number in a plan matters for the step you are about to take, re-derive it from
-`scripts/repo_facts.py` instead of trusting it.
+**The exemption has a cost, and it is worth naming:** incident 2 happened in a plan, so a blanket
+exemption would not have caught it *in situ*. A plan is a live document for the few days it is being
+executed and a historical record forever after, and no single policy fits both halves of that life.
+
+So the plan chooses, by carrying a marker line:
+
+```markdown
+<!-- live-counts -->
+```
+
+A plan with that line is checked alongside `LIVE_DOCS`; every other plan stays exempt. The polarity
+is the point. **Deleting the marker is the act of declaring the plan historical**, so a finished plan
+that forgot to opt out fails with a fix that is "delete one comment line" — and the stale number
+that justified the work is never rewritten.
+
+Be honest about the reach of this. Opting in subjects a plan to `STATED_COUNTS`, and those rules
+only recognise phrasings they were written for. Incident 2's own `workflow 8 / meta 5 / gcp 29`
+matches none of them, so the marker alone would *not* have caught it; someone would also have had
+to add a rule for that phrasing. What the marker removes is the structural exemption — the reason a
+number in an executing plan could not be checked even in principle. Coverage is still opt-in, twice
+over, and still deliberately partial for the reasons in "What is checkable, and what is not".
+
+This is the same explicit opt-in shape as `CATALOGUE_SECTION_GROUPS` and `GEMINI_PURITY_ALLOWLIST`:
+a file is covered because something says so, never because a walk happened to reach it. Do not add
+the marker to a plan that is already complete —
+[`2026-09-01-installable-skill-groups.md`](../plans/2026-09-01-installable-skill-groups.md) is
+finished, and its `~1.9k` is evidence.
+
+For an unmarked plan the mitigation stays behavioural, and it is now executable: when a number in a
+plan matters for the step you are about to take, re-derive it rather than trust it.
+
+```bash
+uv run scripts/repo_facts.py        # every derived fact, as JSON, keys sorted
+```
+
+That dump is read-only and takes no arguments. It exists because this paragraph used to tell you to
+re-derive from a module that printed nothing when you ran it.
 
 ## Two measurement details that cost real time
 

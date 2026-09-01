@@ -14,14 +14,25 @@ with each other.
 `facts(repo)` returns a plain dict. To publish a new number, add a key here and
 both consumers see it.
 
-Import-only: no CLI, and so no shebang and no exec bit. The PEP 723 block is
-kept anyway, so `uv run scripts/repo_facts.py` resolves pyyaml if anyone does
-run it, and so the dependency is declared where CODE_STANDARDS.md expects it.
+A library first, with one read-only convenience on top:
+
+    uv run scripts/repo_facts.py    # every fact as JSON, keys sorted
+
+That dump exists because docs/notes/documentation-drift.md tells you to
+re-derive a number from this module rather than trust a stale one in a plan,
+and advice you cannot execute is not a mitigation. It only prints; it writes
+nothing and takes no arguments. No shebang and no exec bit — `uv run` is how
+CODE_STANDARDS.md says to invoke a Python script, and the PEP 723 block above
+makes that resolve pyyaml with no setup.
+
+`groups` is keyed by a `(tree, name)` tuple, which JSON cannot express as an
+object key, so the dump flattens it to `"gemini/gcp"`. See `_jsonable`.
 
 Deliberately tolerant: unreadable or malformed frontmatter contributes nothing
 rather than raising. Judging a skill malformed is scripts/validate-skills.py's
 job, and a counter that crashes on the file the validator exists to report is
-useless. Nothing here prints, and importing it runs no work.
+useless. Nothing prints on import, and importing runs no work — the dump is
+under `if __name__ == "__main__"`.
 
 The token estimate
 ------------------
@@ -64,6 +75,7 @@ comparing groups against each other, not an invoice.
 
 from __future__ import annotations
 
+import json
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
@@ -222,6 +234,19 @@ def estimate_tokens(chars: int | Decimal, step: int = 1) -> int:
     return int((tokens / step).quantize(Decimal(1), rounding=ROUND_HALF_UP)) * step
 
 
+def percent_of(part: int, whole: int) -> int:
+    """`part` as a whole-number percentage of `whole`, rounded half away from zero.
+
+    Same rounding as `estimate_tokens`, and here for the same reason: rounding
+    policy belongs in one place, or a share and a token count computed by two
+    callers disagree on the .5 case.
+    """
+    if not whole:
+        return 0
+    share = Decimal(part) * 100 / Decimal(whole)
+    return int(share.quantize(Decimal(1), rounding=ROUND_HALF_UP))
+
+
 def format_k(tokens: int) -> str:
     """Render a token count the way the README quotes tree totals: `1.8k`."""
     return f"{(Decimal(tokens) / 1000).quantize(Decimal('0.1'), rounding=ROUND_HALF_UP)}k"
@@ -365,6 +390,25 @@ def facts(repo: Path) -> dict:
             tree: format_k(estimate_tokens(chars)) for tree, chars in median_chars.items()
         },
         "oversized_descriptions": oversized,
-        "description_warn_limit": WARN_DESCRIPTION_LENGTH,
         "groups": group_facts(repo),
     }
+
+
+def _jsonable(data: dict) -> dict:
+    """`facts()` with its one non-JSON-serialisable shape flattened.
+
+    Only `groups` needs it: it is keyed by a `(tree, name)` tuple, which `json`
+    cannot use as an object key. Rendered as `"gemini/gcp"`, matching how
+    groups.toml and `install.sh --group` name a group. Decimals go through
+    `default=str` below rather than losing exactness to float.
+    """
+    return {**data, "groups": {f"{tree}/{name}": g for (tree, name), g in data["groups"].items()}}
+
+
+if __name__ == "__main__":
+    # Read-only dump, so a number in a historical document can be re-derived
+    # rather than trusted -- the mitigation docs/notes/documentation-drift.md
+    # names for docs/plans/ files that carry no `<!-- live-counts -->` marker.
+    # Nothing prints on import: this runs only under `uv run`.
+    _repo = Path(__file__).resolve().parent.parent
+    print(json.dumps(_jsonable(facts(_repo)), indent=2, sort_keys=True, default=str))

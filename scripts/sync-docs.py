@@ -111,8 +111,11 @@ def render(text: str, data: dict) -> str:
     for name, build in BLOCKS.items():
         begin, end = begin_marker(name), end_marker(name)
         region = re.compile(re.escape(begin) + r".*?" + re.escape(end), re.DOTALL)
-        # Blank lines around the table: an HTML comment opens a Markdown HTML
-        # block that runs until one, and would otherwise swallow the table.
+        # Blank lines around the table are cosmetic, not structural. A comment
+        # is a CommonMark type-2 HTML block, which closes at its own `-->`, so
+        # a table butted straight against a marker still renders as a table
+        # (verified through cmark-gfm, markdown-it-py and Python-Markdown).
+        # They are here so the marker reads as a separate thing from the table.
         block = "\n\n".join([begin, "\n".join(build(data)), end])
         # A function replacement, so backslashes and \g in the table stay literal.
         text, found = region.subn(lambda _match, block=block: block, text)
