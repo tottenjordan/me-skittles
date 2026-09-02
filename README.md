@@ -350,13 +350,16 @@ Runs in CI on every push and pull request, alongside the bundle-specific validat
 | Correct plugin manifest per tree | `.claude-plugin/` vs `.gemini-plugin/` |
 | `groups.toml` well-formed, complete, and disjoint | Every skill in exactly one group per tree, or `--group` and `--list` quietly omit it. The installer parses it with `scripts/parse-groups.awk`, so this runs that same file and requires its output to match `tomllib`'s — legal TOML the installer would read differently fails here rather than silently there |
 | The catalogue names no skill absent from both trees | Readers install by name; a dangling row sends them after something that was deleted |
+| Each group within its declared `budget_tokens` | Every installed skill's description sits in context all session, so the cost that bites is the sum per group, not any one description. Claude Code meters that listing at 1% of the context window and, on overflow, drops descriptions starting with the skills you invoke *least* — so an over-large tree strips trigger keywords silently instead of erroring. Budgets are declared per group, not capped globally: a global ceiling would force edits to vendored Google descriptions the notes already ruled out |
 
 **Warnings** — surfaced, don't fail:
 
 - `SKILL.md` over 450 lines, approaching the limit
 - A `description` over 500 characters — it is paid for on every session
 - Helper scripts importing undeclared third-party packages
-- Frontmatter keys the harness ignores (`when_to_use`, `tools`)
+- Frontmatter keys outside the Agent Skills spec (`when_to_use`, `tools`) — they work in some
+  harnesses but fail on the packaging path
+- A group whose declared `budget_tokens` is far above what its descriptions actually cost
 - Relative links that don't resolve
 - A skill that exists but the catalogue never mentions — undiscoverable, but nothing breaks
 - Stale entries in the Gemini-purity allowlist, so exemptions don't outlive their reason

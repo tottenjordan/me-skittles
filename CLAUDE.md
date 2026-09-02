@@ -74,15 +74,24 @@ The `description` field controls when the skill is auto-triggered. Write it as t
 - `SKILL.md` under 500 lines (warns at 450) — the standard documented in
   `writing-skills/anthropic-best-practices.md`; move detail into `references/` and link it
 - No retired model IDs (see `DEPRECATED_MODELS`) outside deprecation notes
-- No frontmatter keys the harness ignores, e.g. `when_to_use` — triggers must live in `description`
+- No frontmatter keys outside the Agent Skills spec, e.g. `when_to_use` — Claude Code reads them,
+  but packaging and upload reject them, so they are a portability trap rather than a dead letter
 - Helper scripts declare third-party dependencies via PEP 723 inline metadata, so `uv run <script>`
   works with no setup (imports guarded by `except ImportError` are exempt)
 - `description` under 500 characters — descriptions load every session, so length is a standing
   context cost, not a per-use one
-- `groups.toml` parses, carries every required key (`name`, `tree`, `description`, `skills`), and
-  places each skill directory in exactly one group for its tree — adding a skill without grouping
-  it fails the build. It also keeps the file in the flat shape `scripts/install.sh`'s awk parser
-  needs: no inline arrays, no multi-line strings
+- `groups.toml` parses, carries every required key (`name`, `tree`, `description`, `budget_tokens`,
+  `skills`), and places each skill directory in exactly one group for its tree — adding a skill
+  without grouping it fails the build. It also keeps the file in the flat shape
+  `scripts/install.sh`'s awk parser needs: no inline arrays, no multi-line strings
+- Each group stays inside the `budget_tokens` it declares. Descriptions are a per-session cost that
+  scales with what you install, and Claude Code meters the always-loaded listing at 1% of the
+  context window — on overflow it drops descriptions starting with the *least-invoked* skills, so
+  an over-large tree silently strips trigger keywords instead of failing. `--group` is the unit
+  people install, so it is the unit budgeted. Budgets are declared per group rather than capped
+  globally: `gemini/gcp` is legitimately large, and a global ceiling would force edits to vendored
+  Google descriptions that [`docs/notes/decisions-not-taken.md`](docs/notes/decisions-not-taken.md)
+  rejected. A budget far above actual cost warns, so it cannot be set high enough to never bind
 - The README skill catalogue names no skill absent from both trees (a skill the catalogue omits is
   a warning). Only table cells that are pure name lists count as catalogue entries, so prose — such
   as the pointer to the official `frontend-design` plugin — is not scanned
