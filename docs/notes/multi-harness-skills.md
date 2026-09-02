@@ -249,20 +249,44 @@ Interim controls that don't depend on unshipped infrastructure:
 
 | # | Action | Why now | Size |
 |---|---|---|---|
-| 1 | Fix the `when_to_use` rationale in `DISCOURAGED_KEYS` | **It is factually wrong today** — see below | 2 lines |
-| 2 | Add a per-group description-budget ceiling to CI | The aggregate listing is the real constraint; `repo_facts.py` already computes the totals | small |
+| 1 | ~~Fix the `when_to_use` rationale in `DISCOURAGED_KEYS`~~ **done 2026-09-02** | It was factually wrong — see below | 2 lines |
+| 2 | ~~Add a per-group description-budget ceiling to CI~~ **done 2026-09-02** | The aggregate listing is the real constraint | small |
 | 3 | Add a `.agents/skills/` shadowing check to the installer | Silent shadowing of the Gemini port, no warning from anywhere | small |
 | 4 | Note in the rationale comments that 500 lines / 500 chars are convention, not measurement | Honest provenance; prevents false confidence | 2 comments |
 | 5 | Reject non-spec top-level frontmatter keys as errors | Portability to the packaging path | small |
 | 6 | Decide the shared-core question for the 11 identical skills | Half the shared surface is hand-maintained duplication | design |
 | 7 | SKILL_ID mapping layer, if a Registry push is ever wanted | 11 skills cannot register under their own names | medium |
 
-**On #1** — the validator currently says trigger conditions in `when_to_use` "are simply never seen".
-Claude Code's docs contradict that verbatim: `when_to_use` is "Appended to `description` in the skill
-listing and counts toward the 1,536-character cap." The **rule should stay** — the key is still rejected
-by `package_skill.py`, the Skills API, and claude.ai upload — but the stated reason must change from
-"never seen" to spec-path portability, and it arguably deserves promotion from warning to error once the
-reason is correct.
+**On #1, as implemented.** The validator had said trigger conditions in `when_to_use` "are simply never
+seen". Claude Code's docs contradict that verbatim: it is "Appended to `description` in the skill listing
+and counts toward the 1,536-character cap." The rule stayed — the key is still rejected by
+`package_skill.py`, the Skills API, and claude.ai upload — with the reason corrected to spec-path
+portability.
+
+It was **not** promoted to error, and the reason is a measurement taken while implementing it. Nothing in
+either tree sets `when_to_use` or `tools`; earlier greps that suggested otherwise were matching body text
+in examples and templates, not frontmatter. But **44 skills do carry other non-spec keys**:
+
+| Key | Skills | Note |
+|---|---|---|
+| `type` | 32 | Vendored Trail of Bits bundle — **load-bearing**, the bundle validator requires it |
+| `version` | 8 | |
+| `languages` | 2 | |
+| `user-invocable` | 2 | A documented Claude Code field, still outside the spec |
+
+So erroring on a curated pair with zero offenders, while 44 skills carry unflagged non-spec keys, would
+be arbitrary. Severity belongs to the general check (**action #5**) — which this measurement reprices: it
+cannot be a flat rejection, because `type` is required by vendored content. It needs the
+allowlist-with-a-written-reason pattern, not a ban.
+
+**On #2, as implemented.** `budget_tokens` is declared per group in `groups.toml` and enforced by
+`check_group_budgets`. A **global** ceiling was rejected: `gemini/gcp` costs ~3,180 tokens against a
+next-largest group of ~509, so any ceiling it passed would bind on nothing, and any ceiling that bound on
+it would force trimming 26 vendored Apache-2.0 Google descriptions — which
+[decisions-not-taken.md](decisions-not-taken.md) already refused, since each such edit is paid again at
+the next upstream re-sync. A group being large is not the defect; a group growing past what someone
+signed off on, unnoticed, is. A budget more than 1.5× the real cost warns, so a ceiling cannot be set
+high enough to never bind.
 
 ## Related
 
