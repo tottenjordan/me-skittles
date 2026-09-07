@@ -103,6 +103,13 @@ TOKEN_STEP = 10
 # Descriptions above this are a standing context cost worth naming. The README
 # quotes how many skills exceed it and scripts/validate-skills.py warns above it,
 # so the count and the warning have to mean one thing: this is that one thing.
+#
+# Local policy, not a platform limit. The spec's ceiling is 1024 characters and
+# the Agent Skills docs put metadata at "~100 tokens" per skill, which is nominal
+# rather than enforced. 500 is half the hard ceiling, chosen to keep the total
+# listing small; no measurement says a 501-character description behaves worse
+# than a 499-character one. It stays a *warning* for exactly that reason -- the
+# real constraint is the per-group aggregate, which check_group_budgets errors on.
 WARN_DESCRIPTION_LENGTH = 500
 
 # `metadata.publisher` marking a skill as vendored from Google rather than

@@ -24,6 +24,14 @@ dev = ["pytest>=8", "pyyaml>=6", "ty>=0.0.1a1"]
 testpaths = ["tests"]
 addopts = "-q --strict-markers"
 
+[tool.ruff]
+# 100, not ruff's default 88, because that is what this repo already is: across
+# scripts/ and tests/, exactly 4 lines exceed 100 columns while 101 exceed 88.
+# Formatting at the default would rewrap a hundred lines to satisfy a convention
+# the code never followed, burying real changes under reflow noise. Codify the
+# existing style rather than impose a new one.
+line-length = 100
+
 # No [tool.ty] table on purpose. scripts/ is a flat directory of sibling modules
 # rather than a package -- validate-skills.py does `from repo_facts import ...`,
 # which only resolves with scripts/ on the search path. The obvious fix,

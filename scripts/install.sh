@@ -70,7 +70,29 @@ DEST="${DEST:-$DEFAULT_DEST}"
 SRC="$REPO/$TREE"
 [ -d "$SRC" ] || die "no such tree: $SRC"
 
+# Gemini CLI reads ~/.agents/skills as a harness-neutral alias for ~/.gemini/skills
+# and, per its own docs, "the .agents/skills/ directory takes precedence". Same
+# tier, higher priority. So a skill sitting there wins over the one installed
+# here, silently: nothing in Gemini CLI, and nothing in this script until now,
+# says which copy actually loaded. Worth naming because the whole point of the
+# gemini tree is that it is a terminology-pure port, and the shadowing copy is
+# the one that would not be.
+#
+# Only meaningful for the default destination. With --dest the alias relationship
+# does not hold, and Claude Code honours no such path at all -- its docs enumerate
+# every location it reads and mention .agents zero times.
+SHADOW_DEST=""
+if [ "$TREE" = "gemini" ] && [ "$DEST" = "$DEFAULT_DEST" ]; then
+  SHADOW_DEST="$HOME/.agents/skills"
+fi
+
 is_bundle() { case " $BUNDLES " in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
+
+# Is this skill shadowed by a higher-precedence copy we did not install?
+shadowed() {
+  [ -n "$SHADOW_DEST" ] || return 1
+  [ -e "$SHADOW_DEST/$1" ] || [ -L "$SHADOW_DEST/$1" ]
+}
 
 # Does $DEST/$1 point into this repo? (i.e. is it ours to manage)
 owned_by_repo() {
@@ -144,13 +166,22 @@ groups_available() {
 if [ "$MODE" = "list" ]; then
   printf '%s -> %s\n\n' "$SRC" "$DEST"
   printf '  %-40s %-10s %s\n' "SKILL" "GROUP" "STATUS"
+  shadow_count=0
   for s in "${AVAILABLE[@]}"; do
     st="$(status_of "$s")"
     is_bundle "$s" && st="$st (bundle: install via marketplace)"
+    if shadowed "$s"; then
+      st="$st (SHADOWED by $SHADOW_DEST/$s)"
+      shadow_count=$((shadow_count+1))
+    fi
     printf '  %-40s %-10s %s\n' "$s" "${GROUP_OF[$s]:--}" "$st"
   done
   printf '\n  %s available, %s installed\n' "${#AVAILABLE[@]}" \
     "$(for s in "${AVAILABLE[@]}"; do status_of "$s"; done | grep -c '^installed$' || true)"
+  if [ "$shadow_count" -gt 0 ]; then
+    printf '  %s shadowed: %s outranks %s, so those load from there, not here.\n' \
+      "$shadow_count" "$SHADOW_DEST" "$DEST"
+  fi
 
   if [ "${#GROUP_ORDER[@]}" -gt 0 ]; then
     printf '\n'
@@ -205,7 +236,7 @@ fi
 [ "$DRY" -eq 1 ] && printf '(dry run — nothing will change)\n\n'
 [ "$DRY" -eq 0 ] && mkdir -p "$DEST"
 
-changed=0 skipped=0
+changed=0 skipped=0 shadowed_any=0
 for s in "${TARGETS[@]}"; do
   link="$DEST/$s"
   st="$(status_of "$s")"
@@ -228,6 +259,14 @@ for s in "${TARGETS[@]}"; do
     skipped=$((skipped+1)); continue
   fi
 
+  # Reported whatever the outcome below: linking a skill that something else
+  # outranks looks like success and is not one.
+  if shadowed "$s"; then
+    printf '  SHADOWED %s (%s/%s takes precedence and will load instead)\n' \
+      "$s" "$SHADOW_DEST" "$s"
+    shadowed_any=1
+  fi
+
   case "$st" in
     installed) skipped=$((skipped+1)) ;;                       # already correct
     -|broken)
@@ -241,6 +280,10 @@ for s in "${TARGETS[@]}"; do
 done
 
 printf '\n  %s changed, %s unchanged\n' "$changed" "$skipped"
+if [ "$shadowed_any" -eq 1 ]; then
+  printf '  Some skills are shadowed by %s, which Gemini CLI reads first.\n' "$SHADOW_DEST"
+  printf '  Remove the copy there, or accept that it is the one that loads.\n'
+fi
 if [ "$MODE" = "install" ] && [ "$DRY" -eq 0 ] && [ "$TREE" = "claude" ]; then
   printf '  Run /doctor in Claude Code to confirm they loaded.\n'
 fi
