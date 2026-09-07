@@ -270,11 +270,14 @@ Interim controls that don't depend on unshipped infrastructure:
 |---|---|---|---|
 | 1 | ~~Fix the `when_to_use` rationale in `DISCOURAGED_KEYS`~~ **done 2026-09-02** | It was factually wrong — see below | 2 lines |
 | 2 | ~~Add a per-group description-budget ceiling to CI~~ **done 2026-09-02** | The aggregate listing is the real constraint | small |
-| 3 | Add a `.agents/skills/` shadowing check to the installer | Silent shadowing of the Gemini port, no warning from anywhere | small |
-| 4 | Note in the rationale comments that 500 lines / 500 chars are convention, not measurement | Honest provenance; prevents false confidence | 2 comments |
-| 5 | Reject non-spec top-level frontmatter keys as errors | Portability to the packaging path | small |
-| 6 | Decide the shared-core question for the 11 identical skills | Half the shared surface is hand-maintained duplication | design |
+| 3 | ~~`.agents/skills/` shadowing check in the installer~~ **done 2026-09-07** | Silent shadowing of the Gemini port | small |
+| 4 | ~~Say in the rationale comments that 500 lines / 500 chars are convention~~ **done 2026-09-07** | Honest provenance; prevents false confidence | 2 comments |
+| 5 | Reject non-spec top-level frontmatter keys as errors | Portability to the packaging path | **repriced — see below** |
+| 6 | ~~Decide the shared-core question~~ **dissolved 2026-09-02** | The corrected §8 changed the question; `check_cross_tree_parity` answers it | — |
 | 7 | SKILL_ID mapping layer, if a Registry push is ever wanted | 11 skills cannot register under their own names | medium |
+
+Only **5** and **7** remain, and 7 is speculative until someone actually wants to publish to the
+registry.
 
 **On #1, as implemented.** The validator had said trigger conditions in `when_to_use` "are simply never
 seen". Claude Code's docs contradict that verbatim: it is "Appended to `description` in the skill listing
