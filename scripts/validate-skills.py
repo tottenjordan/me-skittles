@@ -186,6 +186,71 @@ GEMINI_PURITY_ALLOWLIST: dict[str, str] = {
     ),
 }
 
+# Files that legitimately differ between the two trees, keyed <skill>/<path within it>.
+#
+# 250 of the 281 files shared by both trees are byte-identical, and nothing but
+# habit kept them that way -- commit 991296e ("Fix cross-tree drift") repaired a
+# divergence by hand with nothing to stop the next one. check_cross_tree_parity
+# turns that habit into a rule, and this dict is its set of exceptions.
+#
+# Every entry needs a reason, in the same spirit as GEMINI_PURITY_ALLOWLIST: a
+# file not listed here still fails, so adding one is a visible decision in review
+# rather than a silent weakening. Seeding it caught five real port defects that
+# had shipped -- a frozenset({"gemini", "gemini"}) that collapsed to one element,
+# the same collapse restated in prose, "Supports Gemini, Gemini (Gemini)" where
+# substitution ate a true fact, an unbalanced ```markdown fence, and five blank
+# lines dropped from a2a's protocol reference. Those were fixed, not listed.
+CROSS_TREE_DIVERGENCE: dict[str, str] = {
+    # --- harness naming in prose -------------------------------------------
+    "agent-development/examples/agent-creation-prompt.md": "names the harness driving the template",
+    "agent-development/examples/complete-agent-examples.md": "cites the harness memory file",
+    "agent-development/references/triggering-examples.md": "sample dialogue names the assistant",
+    "git-worktrees/SKILL.md": "greps the harness memory file for a stated preference",
+    "receiving-code-review/SKILL.md": "quotes a memory-file violation by filename",
+    "testing-skills-with-subagents/SKILL.md": "points at the tree's own worked-example filename",
+    "writing-skills/testing-skills-with-subagents.md": "same worked-example filename",
+    "property-based-testing/README.md": "names the harness the plugin serves",
+    "property-based-testing/skills/property-based-testing/README.md": "names the harness",
+    "testing-handbook-skills/README.md": "names the harness the generator emits skills for",
+    "testing-handbook-skills/skills/fuzzing-dictionary/SKILL.md": "names an LLM to prompt",
+    "testing-handbook-skills/skills/testing-handbook-generator/SKILL.md": "names the target harness",
+    "testing-handbook-skills/skills/testing-handbook-generator/agent-prompt.md": "names the harness",
+    "testing-handbook-skills/skills/testing-handbook-generator/discovery.md": "names the agent",
+    # --- install paths and packaging ---------------------------------------
+    "playwright-skill/API_REFERENCE.md": "documents the per-harness skills directory",
+    "playwright-skill/SKILL.md": "lists per-harness install locations",
+    "playwright-skill/package.json": "package description and keywords name the harness",
+    "playwright-skill/run.js": "banner comment names the harness",
+    # --- vocabulary that is genuinely different, not just renamed ----------
+    "agent-development/references/agent-creation-system-prompt.md": (
+        "Gemini says 'system instruction' where Claude says 'system prompt'"
+    ),
+    "agent-development/references/system-prompt-design.md": "same system prompt/instruction split",
+    "agent-development/scripts/validate-agent.sh": (
+        "validates against each provider's own model names, so the accepted set differs"
+    ),
+    "agent-development/SKILL.md": "system prompt/instruction split plus harness naming",
+    "writing-skills/references/cso.md": "the acronym expands to the assistant's own name",
+    "writing-skills/SKILL.md": (
+        "enumerates per-harness skill directories and links each vendor's own authoring guidance"
+    ),
+    "writing-skills/references/testing.md": "per-harness testing workflow and directory layout",
+    "writing-plans/SKILL.md": (
+        "Gemini invokes the sub-skill as superpowers:executing-plans; Claude uses a bare name"
+    ),
+    # --- content that is deliberately not the same -------------------------
+    "adk/SKILL.md": "ADK docs differ per provider: model defaults and the quickstart path",
+    "adk/references/advanced_patterns.md": (
+        "provider list and the third-party model example are written for each tree's audience"
+    ),
+    "testing-handbook-skills/scripts/validate-skills.py": (
+        "RESERVED_WORDS holds each tree's own vendor and product name"
+    ),
+    "testing-handbook-skills/skills/testing-handbook-generator/testing.md": (
+        "documents that tree's RESERVED_WORDS and names the agent under test"
+    ),
+}
+
 # Manifest directory each tree's plugin bundles must use.
 PLUGIN_DIR = {"claude": ".claude-plugin", "gemini": ".gemini-plugin"}
 
@@ -716,6 +781,73 @@ def check_groups(repo: Path, report: Report) -> None:
                     f"{tree}/{skill} is in more than one group ({', '.join(groups)}) — "
                     "membership must be disjoint, one group per skill per tree",
                 )
+
+
+def check_cross_tree_parity(repo: Path, report: Report) -> None:
+    """Keep files shared by both trees byte-identical unless the difference is declared.
+
+    The two trees are independent copies on purpose: a skill directory has to be
+    self-contained, because `overlay_icons.py` resolves its assets relative to
+    `__file__` and copying a skill is a valid way to install it. Sharing a
+    directory would break that, which is why docs/notes/decisions-not-taken.md
+    rejects deduplicating gcp-diagram's 1.8 MB of icons.
+
+    Independent copies still have to agree. 250 of 281 shared files are identical
+    today, so a fix landing in one tree and not the other is invisible: nothing
+    reads both. That is not hypothetical -- 991296e exists to repair exactly it.
+
+    So this checks rather than deduplicates. Byte equality is the rule and
+    CROSS_TREE_DIVERGENCE is the exception list, each entry carrying its reason.
+    A listed file that has since converged is reported too, so exemptions cannot
+    outlive the difference that justified them.
+
+    Only files present in *both* trees are compared. A file in one tree alone is
+    a porting decision, not drift, and several skills legitimately differ that
+    way -- playwright-skill, writing-skills, and the two plugin bundles.
+    """
+    claude_root, gemini_root = repo / "claude", repo / "gemini"
+    if not (claude_root.is_dir() and gemini_root.is_dir()):
+        return  # single-tree checkout or --tree run; nothing to compare
+
+    unused = set(CROSS_TREE_DIVERGENCE)
+    for skill_dir in sorted(p for p in claude_root.iterdir() if p.is_dir()):
+        twin = gemini_root / skill_dir.name
+        if not twin.is_dir():
+            continue
+        for path in sorted(p for p in skill_dir.rglob("*") if p.is_file()):
+            rel = path.relative_to(skill_dir)
+            other = twin / rel
+            if not other.is_file():
+                continue
+            key = f"{skill_dir.name}/{rel.as_posix()}"
+            try:
+                same = path.read_bytes() == other.read_bytes()
+            except OSError as exc:  # unreadable file is its own problem, not drift
+                report.warn(f"claude/{key}", f"Could not compare across trees: {exc}")
+                unused.discard(key)
+                continue
+            if key in CROSS_TREE_DIVERGENCE:
+                unused.discard(key)
+                if same:
+                    report.warn(
+                        SELF,
+                        f"CROSS_TREE_DIVERGENCE lists {key}, but the two trees now agree — "
+                        "drop the entry so the exemption does not outlive its reason",
+                    )
+            elif not same:
+                report.error(
+                    f"gemini/{key}",
+                    f"Differs from claude/{key}, which is not a declared divergence. Port the "
+                    "change to both trees, or add the path to CROSS_TREE_DIVERGENCE with the "
+                    "reason it must differ",
+                )
+
+    for key in sorted(unused):
+        report.warn(
+            SELF,
+            f"CROSS_TREE_DIVERGENCE lists {key}, which is not a file shared by both trees — "
+            "the path is stale or misspelled",
+        )
 
 
 def check_group_budgets(repo: Path, report: Report) -> None:
@@ -1398,6 +1530,8 @@ def main() -> int:
     check_plugin_manifests(repo, report)
     check_groups(repo, report)
     check_group_budgets(repo, report)
+    if len(trees) == len(TREES):
+        check_cross_tree_parity(repo, report)
     check_readme_catalogue(repo, report)
     check_stated_counts(repo, report)
     check_script_dependencies(repo, report)

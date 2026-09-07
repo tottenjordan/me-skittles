@@ -46,7 +46,7 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 
 ## Task Structure
 
-```markdown
+````markdown
 ### Task N: [Component Name]
 
 **Files:**
@@ -61,6 +61,7 @@ def test_specific_behavior():
     result = function(input)
     assert result == expected
 ```
+````
 
 **Step 2: Run test to verify it fails**
 

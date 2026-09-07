@@ -20,7 +20,7 @@
 The Agent Development Kit (ADK) is a framework for building, deploying, and managing AI agents across multiple platforms and models.
 
 ### Key Features
-- **Model Agnostic**: Supports Gemini, Gemini (Gemini), Vertex AI, and other LLM providers
+- **Model Agnostic**: Supports Gemini, third-party models via LiteLLM, Vertex AI, and other LLM providers
 - **Flexible Agent Orchestration**: LLM agents, workflow agents (Sequential, Parallel, Loop), and custom agents
 - **Multi-Language Support**: Python, TypeScript, Go, Java
 - **Deployment Options**: Local, Vertex AI Agent Engine, Cloud Run, GKE, containerized environments

@@ -70,6 +70,11 @@ The `description` field controls when the skill is auto-triggered. Write it as t
 - `description` present and non-trivial (skills auto-trigger from it)
 - No dangling symlinks or committed build artifacts
 - No Claude terminology under `gemini/` — that tree is a port, not a copy
+- Files shared by both trees stay byte-identical unless listed in `CROSS_TREE_DIVERGENCE` with a
+  reason. 250 of the 281 shared files are identical, and the trees are separate copies on purpose
+  (a skill directory must be self-contained), so a fix landing in one tree only is invisible —
+  nothing reads both. Seeding the allowlist caught five shipped port defects, including a
+  `frozenset({"gemini", "gemini"})` that collapsed to a single element
 - Plugin bundles using the manifest directory for their tree
 - `SKILL.md` under 500 lines (warns at 450) — the standard documented in
   `writing-skills/anthropic-best-practices.md`; move detail into `references/` and link it
