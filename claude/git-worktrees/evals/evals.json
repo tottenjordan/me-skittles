@@ -1,0 +1,35 @@
+{
+  "skill": "git-worktrees",
+  "tree": "claude",
+  "notes": [
+    "Trigger cases only. The skill is installed for every case in this file; the",
+    "question is whether it fires, not whether it exists. should_trigger cases",
+    "measure recall, should_not_trigger cases measure precision.",
+    "",
+    "The should_not_trigger set is the part that earns its keep. Every entry is a",
+    "near-miss chosen to be genuinely adjacent -- git branch work, parallel work,",
+    "isolation, cleanup -- so a description that over-claims fires on them. Cases",
+    "that obviously belong to another domain prove nothing, and a corpus full of",
+    "those reports a precision the skill has not earned."
+  ],
+  "should_trigger": [
+    "I need to work on two branches at once without stashing. Set that up.",
+    "Create an isolated workspace for this feature so I don't disturb my current checkout.",
+    "Set up a git worktree for the refactor branch.",
+    "I'm about to start executing an implementation plan and want it isolated from main.",
+    "Show me the worktrees on this repo and remove the ones I've already merged.",
+    "The feature is done in the worktree -- merge it back to main and clean up.",
+    "Where should I put a new worktree so git doesn't try to track it?",
+    "I have three stale worktrees and their branches left over. Tear them down."
+  ],
+  "should_not_trigger": [
+    "Create a new branch called feature/login and switch to it.",
+    "I have uncommitted changes I need to set aside for a minute.",
+    "Run the test suite on this branch and tell me what fails.",
+    "Merge main into my current branch and resolve the conflicts.",
+    "Delete the local branches that have already been merged.",
+    "Clone this repository into a second directory so I can compare versions.",
+    "Set up two terminal panes so I can watch the server log while I edit.",
+    "What's the difference between git fetch and git pull?"
+  ]
+}
