@@ -9,6 +9,7 @@ left to the smoke run in CI-free manual use.
 from __future__ import annotations
 
 import json
+import os
 
 import pytest
 from conftest import _load
@@ -190,3 +191,70 @@ def test_group_siblings_returns_the_whole_workflow_group(evals):
 
 def test_group_siblings_falls_back_to_the_skill_alone(evals):
     assert evals.group_siblings("claude", "not-a-real-skill") == ["not-a-real-skill"]
+
+
+# --------------------------------------------------------------------------
+# The scan window. These lock in the fix for the harness's worst defect: it
+# used to stop at the model's first tool call, which scored a skill as a miss
+# whenever the session explored the repo before invoking it -- which is what
+# real sessions do.
+# --------------------------------------------------------------------------
+
+
+@pytest.fixture
+def fake_claude(tmp_path, monkeypatch):
+    """Put a stub `claude` on PATH that replays a canned stream-json transcript."""
+
+    def install(tool_names):
+        events = []
+        for name in tool_names:
+            payload = {"skill": "demo"} if name == "Skill" else {"command": "ls"}
+            events.append(
+                {"message": {"content": [{"type": "tool_use", "name": name, "input": payload}]}}
+            )
+        events.append({"type": "result", "subtype": "success"})
+        script = tmp_path / "claude"
+        body = "\n".join(json.dumps(e) for e in events)
+        script.write_text("#!/bin/sh\ncat <<'EOF'\n" + body + "\nEOF\n")
+        script.chmod(0o755)
+        monkeypatch.setenv("PATH", f"{tmp_path}:{os.environ['PATH']}")
+        return script
+
+    return install
+
+
+def test_skill_found_as_the_very_first_tool(evals, fake_claude, tmp_path):
+    fake_claude(["Skill"])
+    fired, tools = evals.find_skill_call(tmp_path, tmp_path, "q", 6)
+    assert fired == "demo"
+    assert tools == ["Skill"]
+
+
+def test_skill_found_after_exploration(evals, fake_claude, tmp_path):
+    """The regression. Under the old first-tool rule this scored as a miss."""
+    fake_claude(["Bash", "Read", "Glob", "Skill"])
+    fired, tools = evals.find_skill_call(tmp_path, tmp_path, "q", 6)
+    assert fired == "demo"
+    assert len(tools) == 4
+
+
+def test_window_closes_before_a_late_skill_call(evals, fake_claude, tmp_path):
+    """max_tools is a budget, and the report must not pretend otherwise."""
+    fake_claude(["Bash"] * 6 + ["Skill"])
+    fired, tools = evals.find_skill_call(tmp_path, tmp_path, "q", 6)
+    assert fired is None
+    assert len(tools) == 6
+
+
+def test_a_run_with_no_tools_at_all_is_a_miss(evals, fake_claude, tmp_path):
+    fake_claude([])
+    fired, tools = evals.find_skill_call(tmp_path, tmp_path, "q", 6)
+    assert fired is None
+    assert tools == []
+
+
+def test_widening_the_window_can_change_the_verdict(evals, fake_claude, tmp_path):
+    """The property that made the old rule wrong, stated as a test."""
+    fake_claude(["Bash", "Bash", "Skill"])
+    assert evals.find_skill_call(tmp_path, tmp_path, "q", 1)[0] is None
+    assert evals.find_skill_call(tmp_path, tmp_path, "q", 6)[0] == "demo"
