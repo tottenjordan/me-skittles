@@ -53,21 +53,23 @@ query like "set up a worktree" reads differently outside one.
 
 `--permission-mode plan` keeps a run from touching anything real.
 
-Why it stops at the first tool call
+Why it scans a window of tool calls
 -----------------------------------
-Cost. Left alone, a triggered run keeps going and does the work: measured at
-about $0.51 and 90 seconds for a single case, which makes a corpus unaffordable
-and buys nothing, since the decision being measured has already happened.
+The first version stopped at the model's first tool call, on the reasoning that
+a skill matching a request matches it at the point of reading. That was wrong,
+and measurably so: real sessions explore the repo with Bash before deciding, and
+a case scored 0/3 under that rule fired as soon as the window widened. The rule
+was not a minor accepted limit, it was systematically undercounting recall.
 
-So the stream is read until the model's first tool call and the process is then
-killed. If that call is Skill with the expected name, the skill fired. Anything
-else means the model chose to act without it.
+So the stream is now read until a Skill call appears, or `--max-tools` calls have
+gone by (default 6), or the run ends. Cost rose from about 5 seconds a case to
+about 33; a full pass over this group at --repeat 3 is several hours, which is
+why the default repeat is modest and why runs are a deliberate act rather than
+part of CI.
 
-The honest limit: this rules out a skill invoked *late*, after some other tool.
-That is a real gap, and it is accepted deliberately -- a skill that matches a
-request matches it at the point of reading, and treating a fifth-turn invocation
-as a trigger success would flatter the description. If a case looks wrong, rerun
-it with `--case N --keep` and read the transcript.
+Still not measured: a skill invoked after more than `--max-tools` calls. That
+limit is now a budget decision rather than a claim about behaviour.
+
 """
 
 from __future__ import annotations
@@ -106,6 +108,7 @@ class Case:
     should_trigger: bool
     fires: list[str | None] = field(default_factory=list)
     first_tools: list[str | None] = field(default_factory=list)
+    tool_paths: list[list[str]] = field(default_factory=list)
     error: str | None = None
 
     @property
@@ -200,8 +203,14 @@ def sandbox(tree: str, skill_names: list[str]) -> tuple[Path, Path]:
     return config, workdir
 
 
-def first_tool_call(config: Path, workdir: Path, query: str) -> tuple[str | None, dict | None]:
-    """Run one query; return the first tool name and its input, killing the run there."""
+def find_skill_call(
+    config: Path, workdir: Path, query: str, max_tools: int
+) -> tuple[str | None, list[str]]:
+    """Run one query; return the skill invoked, if any, and the tools tried first.
+
+    Stops as soon as a Skill call appears, or after `max_tools` tool calls, or at
+    the end of the run -- whichever comes first.
+    """
     env = {**os.environ, "CLAUDE_CONFIG_DIR": str(config)}
     proc = subprocess.Popen(
         [
@@ -220,6 +229,7 @@ def first_tool_call(config: Path, workdir: Path, query: str) -> tuple[str | None
         stderr=subprocess.DEVNULL,
         text=True,
     )
+    tools: list[str] = []
     try:
         assert proc.stdout is not None
         for line in proc.stdout:
@@ -228,27 +238,32 @@ def first_tool_call(config: Path, workdir: Path, query: str) -> tuple[str | None
             except json.JSONDecodeError:
                 continue
             for chunk in (event.get("message") or {}).get("content") or []:
-                if isinstance(chunk, dict) and chunk.get("type") == "tool_use":
-                    return chunk.get("name"), chunk.get("input") or {}
-            # A final result with no tool call at all is a legitimate outcome:
-            # the model answered in prose without reaching for anything.
+                if not (isinstance(chunk, dict) and chunk.get("type") == "tool_use"):
+                    continue
+                name = chunk.get("name")
+                tools.append(name)
+                if name == "Skill":
+                    payload = chunk.get("input") or {}
+                    return payload.get("skill") or payload.get("name"), tools
+                if len(tools) >= max_tools:
+                    return None, tools
             if event.get("type") == "result":
-                return None, None
+                return None, tools
     finally:
         proc.kill()
         proc.wait(timeout=10)
-    return None, None
+    return None, tools
 
 
-def run_case(case: Case, tree: str, install: list[str], keep: bool, repeat: int) -> None:
+def run_case(
+    case: Case, tree: str, install: list[str], keep: bool, repeat: int, max_tools: int
+) -> None:
     for _ in range(repeat):
         config, workdir = sandbox(tree, install)
         try:
-            name, payload = first_tool_call(config, workdir, case.query)
-            case.first_tools.append(name)
-            invoked = None
-            if name == "Skill":
-                invoked = (payload or {}).get("skill") or (payload or {}).get("name")
+            invoked, tools = find_skill_call(config, workdir, case.query, max_tools)
+            case.first_tools.append(tools[0] if tools else None)
+            case.tool_paths.append(tools)
             case.fires.append(invoked)
         except subprocess.TimeoutExpired:
             case.error = f"timed out after {CASE_TIMEOUT_S}s"
@@ -319,6 +334,12 @@ def main() -> int:
         help="runs per case; 1 is a sample, not a measurement (default: 3)",
     )
     parser.add_argument(
+        "--max-tools",
+        type=int,
+        default=6,
+        help="tool calls to scan for a Skill call before giving up (default: 6)",
+    )
+    parser.add_argument(
         "--isolated",
         action="store_true",
         help="install only this skill instead of its whole group (hides sibling confusion)",
@@ -340,7 +361,7 @@ def main() -> int:
     for index, case in enumerate(selected):
         arrow = "should fire" if case.should_trigger else "should not"
         print(f"  [{index + 1}/{len(selected)}] {arrow}: {case.query[:58]}")
-        run_case(case, corpus.tree, install, args.keep, args.repeat)
+        run_case(case, corpus.tree, install, args.keep, args.repeat, args.max_tools)
         got = case.fired or case.first_tool or "no tool"
         flag = "  OK" if case.correct else "  <-- unexpected"
         if case.unstable:
