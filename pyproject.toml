@@ -1,0 +1,38 @@
+# Dev tooling only. Nothing in this repo is a distributable package -- the skills
+# are markdown, and every helper under scripts/ carries PEP 723 inline metadata so
+# `uv run scripts/<name>.py` works with no setup and no project environment.
+#
+# `package = false` keeps it that way: uv will not try to build or install this
+# directory, so the inline-metadata scripts keep resolving their own dependencies
+# in isolation. Verified -- adding this file does not change what those scripts do.
+[project]
+name = "me-skittles"
+version = "0"
+description = "Agent skills for Claude Code and Gemini CLI"
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.uv]
+package = false
+
+[dependency-groups]
+# pyyaml is not a test dependency as such: the tests import scripts/repo_facts.py,
+# which parses YAML frontmatter, and outside `uv run` its inline metadata does not apply.
+dev = ["pytest>=8", "pyyaml>=6", "ty>=0.0.1a1"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+
+# No [tool.ty] table on purpose. scripts/ is a flat directory of sibling modules
+# rather than a package -- validate-skills.py does `from repo_facts import ...`,
+# which only resolves with scripts/ on the search path. The obvious fix,
+# `[tool.ty.environment] extra-paths = ["scripts"]`, is a recognised setting that
+# did *not* take effect when a target path is passed on the command line; ty kept
+# reporting unresolved-import. So the search path is passed explicitly instead:
+#
+#   uv run --group dev ty check --extra-search-path scripts scripts/
+#
+# Checking `scripts/` rather than the whole repo is also deliberate: a bare
+# `ty check` walks into the skills themselves and reports ~34 diagnostics in
+# vendored helper scripts this repo does not own.

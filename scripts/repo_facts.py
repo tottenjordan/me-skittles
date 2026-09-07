@@ -76,15 +76,14 @@ comparing groups against each other, not an invoice.
 from __future__ import annotations
 
 import json
+
+# stdlib from 3.11, guaranteed by the PEP 723 header above and by pyproject.toml's
+# requires-python. The comment that used to sit here explained a ruff workaround
+# that pyproject.toml made unnecessary; see scripts/validate-skills.py.
+import tomllib
 from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
-# `tomllib` is stdlib from 3.11, which the PEP 723 header above requires. ruff
-# does not read that header, so under its default target version it sorts the
-# import here rather than into the stdlib block above; keep it here so
-# `uvx ruff check` stays clean without a config file. Same reasoning as
-# scripts/validate-skills.py.
-import tomllib
 import yaml
 
 # This module is the leaf: consumers import it, it imports none of them. The
