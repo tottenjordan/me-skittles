@@ -89,11 +89,17 @@ push and PR. It enforces:
 - No Claude terminology under `gemini/` — that tree is a port, not a copy
 - Plugin bundles using the manifest directory for their tree
 - No retired model IDs outside text discussing their retirement
-- No frontmatter keys the harness ignores, such as `when_to_use` — triggers belong in `description`
+- No frontmatter keys outside the Agent Skills spec, such as `when_to_use` — a harness may well read
+  them, but packaging and upload reject them, so they are a portability trap rather than a dead letter
 - Helper scripts declaring third-party dependencies via PEP 723, so `uv run <script>` needs no setup
-- `groups.toml` parsing, carrying every required key, and putting each skill directory in exactly
-  one group for its tree — so adding a skill without grouping it fails the build. Also the flat
-  shape the installer's awk parser needs: no inline arrays, no multi-line strings
+- `groups.toml` parsing, carrying every required key (including `budget_tokens`), and putting each
+  skill directory in exactly one group for its tree — so adding a skill without grouping it fails
+  the build. Also the flat shape the installer's awk parser needs: no inline arrays, no multi-line
+  strings
+- Each group staying inside the `budget_tokens` it declares. Descriptions load every session for
+  every installed skill, so the binding constraint is the sum per group, not the length of any one
+  description. Budgets are declared per group rather than capped globally, because a global ceiling
+  would force edits to vendored Google descriptions that the notes already rejected
 - The README skill catalogue naming no skill that is absent from both trees (a skill the catalogue
   omits is a warning)
 - Each catalogue row sitting under the section for the group that installs it. Headings map to

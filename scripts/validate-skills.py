@@ -111,12 +111,29 @@ CATALOGUE_NAME_PATTERN = re.compile(r"^(?=.{1,64}$)[a-z0-9]+(?:-[a-z0-9]+)*$")
 LINK_PATTERN = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
 ARTIFACT_GLOBS = ("**/__pycache__", "**/*.pyc")
 
-# Frontmatter keys that look right but are not what the harness reads.
-# `when_to_use` is the worst of these: skills auto-trigger from `description`
-# alone, so trigger conditions parked in `when_to_use` are simply never seen.
+# Frontmatter keys outside the Agent Skills spec, which defines exactly six:
+# name, description, license, compatibility, metadata, allowed-tools.
+#
+# The hazard is not that a harness ignores these -- Claude Code reads both, and
+# documents `when_to_use` as "Appended to `description` in the skill listing".
+# It is that "works in Claude Code" is not "portable": the spec's reference
+# validator treats an unknown top-level key as a hard error, and so do
+# package_skill.py, the Skills API and claude.ai upload, which fail with
+# `Unexpected key(s) in SKILL.md frontmatter` rather than ignoring the field.
+#
+# Kept a warning, not an error, on purpose. Promoting it would force deleting
+# real trigger surface from skills that work today to satisfy a packaging path
+# this repo does not currently publish through. Revisit if we ever push to a
+# registry -- see docs/notes/multi-harness-skills.md.
 DISCOURAGED_KEYS = {
-    "when_to_use": "triggers belong in `description` — only that field drives auto-triggering",
-    "tools": "skills use `allowed-tools`; `tools` is the agent-definition field",
+    "when_to_use": (
+        "not in the Agent Skills spec — Claude Code honours it, but packaging and upload "
+        "reject it; fold the trigger text into `description`"
+    ),
+    "tools": (
+        "not in the Agent Skills spec — skills use `allowed-tools`; `tools` is the "
+        "agent-definition field"
+    ),
 }
 
 # Model IDs that providers have retired. Skills documenting a dead model send
@@ -178,7 +195,12 @@ PLUGIN_DIR = {"claude": ".claude-plugin", "gemini": ".gemini-plugin"}
 # the same thing to that awk program as it does to tomllib.
 GROUPS_FILE = "groups.toml"
 GROUPS_PARSER = "scripts/parse-groups.awk"
-GROUP_REQUIRED_KEYS = ("name", "tree", "description", "skills")
+GROUP_REQUIRED_KEYS = ("name", "tree", "description", "skills", "budget_tokens")
+
+# A group's declared ceiling may exceed what it actually costs -- headroom is the
+# point -- but a budget far above the real figure enforces nothing. Warn past
+# this ratio so a ceiling cannot be quietly set high enough to never bind.
+GROUP_BUDGET_SLACK = 1.5
 
 # How many disagreeing entries to name before truncating; the first handful
 # already identify the cause.
@@ -537,7 +559,7 @@ def check_line_count(skill_file: Path, repo: Path, content: str, report: Report)
 
 
 def check_frontmatter_keys(skill_file: Path, repo: Path, frontmatter: dict, report: Report) -> None:
-    """Warn on keys the harness ignores but an author may believe are load-bearing."""
+    """Warn on frontmatter keys outside the six the Agent Skills spec defines."""
     for key, why in DISCOURAGED_KEYS.items():
         if key in frontmatter:
             report.warn(skill_file.relative_to(repo), f"Frontmatter key `{key}`: {why}")
@@ -694,6 +716,68 @@ def check_groups(repo: Path, report: Report) -> None:
                     f"{tree}/{skill} is in more than one group ({', '.join(groups)}) — "
                     "membership must be disjoint, one group per skill per tree",
                 )
+
+
+def check_group_budgets(repo: Path, report: Report) -> None:
+    """Hold each group to the context budget it declares in groups.toml.
+
+    Why per group and not per skill. Every installed skill's description sits in
+    the model's context for the whole session, whether or not the skill fires.
+    Claude Code meters that listing at a documented 1% of the context window and,
+    on overflow, drops descriptions starting with the skills you invoke least --
+    so an over-large tree does not fail loudly, it silently strips the trigger
+    keywords off exactly the skills nobody remembers to invoke by name. The
+    per-skill description limit cannot see that, because the binding constraint
+    is the sum. `--group` is the unit people install, so it is the unit to budget.
+
+    Why declared, not a single global ceiling. A fixed ceiling would fail
+    `gemini/gcp` today, and the only way to pass would be editing 26 vendored
+    Apache-2.0 Google descriptions -- which docs/notes/decisions-not-taken.md
+    already rejected, on the grounds that every such edit is paid again at the
+    next upstream re-sync, and that installable groups solve the same problem
+    without upstream divergence. A group being large is not the defect. A group
+    growing past what someone signed off on, unnoticed, is. So the manifest
+    carries the number and CI holds it there: raising a budget is a visible diff
+    with a reviewer, the same shape as the terminology allowlist.
+
+    Tokens are the repo's usual chars/4 estimate -- good for comparing groups
+    against each other, not an invoice. Deliberately no absolute ceiling here:
+    Claude Code's budget is a fraction of a context window that varies by model,
+    and its docs state it in characters and in tokens interchangeably, so any
+    single number this script hard-coded would be wrong for someone.
+    """
+    facts = repo_facts_for(repo)
+    groups = facts.get("groups") or {}
+    if not groups:
+        return  # check_groups already reported why there is nothing to measure
+
+    for (tree, name), group in sorted(groups.items()):
+        where = f"[[group]] {name} ({tree})"
+        declared = group.get("budget_tokens")
+        actual = group["tokens"]
+
+        if not isinstance(declared, int) or isinstance(declared, bool) or declared <= 0:
+            # A missing key is check_groups' business; a present-but-unusable one is ours.
+            if declared is not None:
+                report.error(
+                    GROUPS_FILE,
+                    f"{where}: `budget_tokens` must be a positive integer, got {declared!r}",
+                )
+            continue
+
+        if actual > declared:
+            report.error(
+                GROUPS_FILE,
+                f"{where}: descriptions cost ~{actual} tokens, over its declared "
+                f"budget_tokens = {declared} by {actual - declared}. Trim a description, move a "
+                f"skill to another group, or raise the budget deliberately in this file",
+            )
+        elif declared > actual * GROUP_BUDGET_SLACK:
+            report.warn(
+                GROUPS_FILE,
+                f"{where}: budget_tokens = {declared} is far above the ~{actual} tokens it "
+                f"actually costs, so it constrains nothing — lower it toward the real figure",
+            )
 
 
 def toml_group_triples(data: dict) -> set[tuple[str, str, str]]:
@@ -1313,6 +1397,7 @@ def main() -> int:
     check_artifacts(repo, report)
     check_plugin_manifests(repo, report)
     check_groups(repo, report)
+    check_group_budgets(repo, report)
     check_readme_catalogue(repo, report)
     check_stated_counts(repo, report)
     check_script_dependencies(repo, report)

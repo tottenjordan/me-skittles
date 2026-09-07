@@ -302,6 +302,11 @@ def group_facts(repo: Path) -> dict[tuple[str, str], dict]:
             "tree": tree,
             "name": name,
             "description": entry.get("description", ""),
+            # Passed through unvalidated and possibly absent: this module reports
+            # what the manifest says, and validate-skills.py decides whether that
+            # is usable. Keeping the judgement in one place is why the generator
+            # and the validator cannot disagree.
+            "budget_tokens": entry.get("budget_tokens"),
             "skills": skills,
             "skill_count": len(skills),
             "described": described,
