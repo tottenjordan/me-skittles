@@ -95,6 +95,14 @@ MIN_DESCRIPTION_LENGTH = 20
 # costs context on every single use. 500 is the repo's own documented standard --
 # claude/writing-skills/anthropic-best-practices.md states it twice, including as
 # a checklist item -- and is what the testing-handbook bundle validator enforces.
+#
+# It is convention, not measurement. The Agent Skills spec says "Keep your main
+# SKILL.md under 500 lines" and Anthropic's best-practices page repeats it, both
+# as recommendations "for optimal performance" with no published data behind
+# them. Nobody has shown that 501 lines degrades anything. The number is worth
+# enforcing because a shared arbitrary limit still keeps bodies small and the
+# tooling consistent -- but do not defend it as an empirical threshold, and do
+# not be shy about revisiting it if a skill has a real reason to be longer.
 MAX_SKILL_LINES = 500
 WARN_SKILL_LINES = 450
 NAME_PATTERN = re.compile(r"^[a-z0-9-]{1,64}$")
