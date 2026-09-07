@@ -60,6 +60,25 @@ jobs:
         with:
           enable-cache: true
 
+      # The validator is the gate for everything below, and until now nothing
+      # tested it. These run first: a broken check reports nothing and the
+      # skill validation below would pass for the wrong reason.
+      - name: Test the validators
+        run: uv run --group dev pytest
+
+      # Lint only. `ruff format --check` would reformat five files that predate
+      # this workflow, and a repo-wide reformat buried inside another change is
+      # unreviewable -- it belongs in its own commit. Left as a follow-up.
+      - name: Lint
+        run: uvx ruff check scripts/ tests/
+
+      # scripts/ only, and with an explicit search path. A bare `ty check` walks
+      # into the skills and reports ~34 diagnostics in vendored helper scripts we
+      # do not own; scripts/ is a flat directory of sibling modules, so without
+      # --extra-search-path every cross-script import is unresolved.
+      - name: Type-check
+        run: uv run --group dev ty check --extra-search-path scripts scripts/
+
       - name: Validate every SKILL.md in claude/ and gemini/
         run: uv run scripts/validate-skills.py
 

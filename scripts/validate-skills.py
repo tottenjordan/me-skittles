@@ -50,16 +50,17 @@ import json
 import re
 import subprocess
 import sys
+
+# stdlib from 3.11, which both the PEP 723 header above and pyproject.toml's
+# requires-python guarantee. It used to sit apart from the block above with a
+# comment explaining that ruff, having no target version to read, would not sort
+# it as stdlib. pyproject.toml supplies that version now, so ruff places it
+# correctly and the workaround is gone.
+import tomllib
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from functools import cache
 from pathlib import Path
-
-# `tomllib` is stdlib from 3.11, which the PEP 723 header above requires. ruff
-# does not read that header, so under its default target version it sorts the
-# import here rather than into the stdlib block above; keep it here so
-# `uvx ruff check` stays clean without a config file.
-import tomllib
 
 # Same directory, so `uv run scripts/validate-skills.py` resolves it with no path
 # setup. It is the single source of derived facts, and of the constants and

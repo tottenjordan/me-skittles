@@ -13,3 +13,9 @@ __pycache__/
 
 # OS
 .DS_Store
+
+# Dev tooling (pyproject.toml). uv.lock is deliberately not ignored -- it is the
+# only pinned record of what the test and type-check steps actually resolved.
+.venv/
+.pytest_cache/
+.ruff_cache/

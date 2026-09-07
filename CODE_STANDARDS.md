@@ -67,8 +67,22 @@ uvx ruff format .
 The detailed reference is the `modern-python` skill — [`claude/modern-python/SKILL.md`](claude/modern-python/SKILL.md).
 It already mandates this exact stack; follow it rather than re-deriving conventions here.
 
-> **Current reality:** this repo has no `pytest` suite. `scripts/validate-skills.py` is its de facto
-> test. `pytest` applies to new Python code; there is no expectation of backfilling.
+> **Current reality:** `tests/` covers the validators in `scripts/`, which are what CI enforces
+> everything else with. It is not a backfill of all 1,400 lines and is not meant to become one — it
+> holds the checks whose behaviour someone has had a reason to verify, seeded from the throwaway
+> sandbox scripts that verification used to be written as. Add to it when you touch a check.
+>
+> The pattern each test follows: copy the repo, break one thing, assert the check reports it, **and
+> assert it stays quiet when nothing is broken.** Both halves matter. The failure that motivated the
+> suite was the second kind inverted — decorating the README's headings with emoji would have
+> silently unhooked `check_readme_catalogue`, which fails *open*: no section found, nothing checked,
+> build green. Use the `sandbox` fixture; it initialises git, because `check_artifacts` resolves
+> tracked files with `git ls-files` and a sandbox without it reports every `__pycache__` as
+> committed.
+>
+> Run them with `uv run --group dev pytest`. Type-check with
+> `uv run --group dev ty check --extra-search-path scripts scripts/` — the search path is required
+> because `scripts/` is a flat directory of sibling modules rather than a package.
 
 ## Skills
 
