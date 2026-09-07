@@ -20,13 +20,16 @@ def evals():
     return _load("run_evals", "run-evals.py")
 
 
-def make(evals, query="q", should_trigger=True, fires=None, first_tool=None, error=None):
+def make(
+    evals, query="q", should_trigger=True, fires=None, first_tool=None, error=None, skill="demo"
+):
     """`fires` is one entry per run; a bare string is shorthand for a single run."""
     if isinstance(fires, str) or fires is None:
         fires = [fires]
     return evals.Case(
         query=query,
         should_trigger=should_trigger,
+        skill=skill,
         fires=list(fires),
         first_tools=[first_tool] * len(fires),
         error=error,
@@ -36,10 +39,10 @@ def make(evals, query="q", should_trigger=True, fires=None, first_tool=None, err
 @pytest.mark.parametrize(
     "should_trigger, fires, expected",
     [
-        (True, "git-worktrees", True),  # wanted it, got it
+        (True, "demo", True),  # wanted it, got it
         (True, None, False),  # wanted it, silent -> miss
         (False, None, True),  # did not want it, silent
-        (False, "git-worktrees", False),  # did not want it, fired -> false positive
+        (False, "demo", False),  # did not want it, fired -> false positive
     ],
 )
 def test_correctness_of_a_single_case(evals, should_trigger, fires, expected):
@@ -258,3 +261,45 @@ def test_widening_the_window_can_change_the_verdict(evals, fake_claude, tmp_path
     fake_claude(["Bash", "Bash", "Skill"])
     assert evals.find_skill_call(tmp_path, tmp_path, "q", 1)[0] is None
     assert evals.find_skill_call(tmp_path, tmp_path, "q", 6)[0] == "demo"
+
+
+# --------------------------------------------------------------------------
+# Sibling firing. Once the sandbox installs a whole group, "some skill fired"
+# and "the skill under test fired" stop being the same question.
+# --------------------------------------------------------------------------
+
+
+def test_a_sibling_answering_a_near_miss_is_not_a_false_fire(evals, capsys):
+    """The real case: executing-plans' near-miss arm contains a query that is
+    finishing-a-development-branch's own trigger case. The sibling answering it
+    is the group working, not a precision failure."""
+    case = evals.Case(
+        query="The feature is done and tests pass. Should I merge or open a PR?",
+        should_trigger=False,
+        skill="executing-plans",
+        fires=["finishing-a-development-branch"],
+        first_tools=["Skill"],
+    )
+    assert case.stolen_by == "finishing-a-development-branch"
+    assert case.correct is True
+    corpus = evals.Corpus(skill="executing-plans", tree="claude", cases=[case])
+    assert evals.report(corpus) == 0
+    assert "a sibling answered" in capsys.readouterr().out
+
+
+def test_the_skill_itself_firing_on_a_near_miss_is_still_a_false_fire(evals):
+    case = evals.Case(
+        query="unrelated", should_trigger=False, skill="demo", fires=["demo"], first_tools=["Skill"]
+    )
+    assert case.stolen_by is None
+    assert case.correct is False
+
+
+def test_a_sibling_firing_on_a_should_trigger_case_is_still_a_miss(evals):
+    """Recall is unforgiving in the other direction: the neighbour stealing a
+    query this skill was supposed to win is exactly the failure worth catching."""
+    case = evals.Case(
+        query="q", should_trigger=True, skill="demo", fires=["other"], first_tools=["Skill"]
+    )
+    assert case.correct is False
+    assert case.stolen_by == "other"

@@ -106,6 +106,7 @@ class Case:
 
     query: str
     should_trigger: bool
+    skill: str = ""  # the skill under test; a sibling firing is a different result
     fires: list[str | None] = field(default_factory=list)
     first_tools: list[str | None] = field(default_factory=list)
     tool_paths: list[list[str]] = field(default_factory=list)
@@ -138,8 +139,23 @@ class Case:
         return 0 < fired < len(self.fires)
 
     @property
+    def stolen_by(self) -> str | None:
+        """A sibling fired instead of the skill under test.
+
+        On a should_not_trigger case that is usually the *right* answer, not a
+        failure: the corpus asks whether this skill stays quiet, and a neighbour
+        correctly handling the query is the group working as intended. Scoring it
+        as a false fire punished `executing-plans` for
+        `finishing-a-development-branch` answering a question that is literally
+        one of its own trigger cases.
+        """
+        return self.fired if self.fired and self.fired != self.skill else None
+
+    @property
     def correct(self) -> bool:
-        return self.error is None and (self.fired is not None) == self.should_trigger
+        if self.error is not None:
+            return False
+        return (self.fired == self.skill) == self.should_trigger
 
 
 @dataclass
@@ -153,9 +169,9 @@ def load(skill_path: Path) -> Corpus:
     data = json.loads((skill_path / EVALS_FILE).read_text(encoding="utf-8"))
     corpus = Corpus(skill=data["skill"], tree=data["tree"])
     for query in data.get("should_trigger", []):
-        corpus.cases.append(Case(query=query, should_trigger=True))
+        corpus.cases.append(Case(query=query, should_trigger=True, skill=corpus.skill))
     for query in data.get("should_not_trigger", []):
-        corpus.cases.append(Case(query=query, should_trigger=False))
+        corpus.cases.append(Case(query=query, should_trigger=False, skill=corpus.skill))
     return corpus
 
 
@@ -282,8 +298,9 @@ def report(corpus: Corpus) -> int:
     avoid = [c for c in corpus.cases if not c.should_trigger]
     hits = [c for c in want if c.fired == corpus.skill]
     misses = [c for c in want if c.fired != corpus.skill]
-    false_fires = [c for c in avoid if c.fired is not None]
-    quiet = [c for c in avoid if c.fired is None]
+    false_fires = [c for c in avoid if c.fired == corpus.skill]
+    quiet = [c for c in avoid if c.fired != corpus.skill]
+    handled_by_sibling = [c for c in avoid if c.stolen_by]
 
     unstable = [c for c in corpus.cases if c.unstable]
     repeats = max((len(c.fires) for c in corpus.cases), default=0)
@@ -303,6 +320,10 @@ def report(corpus: Corpus) -> int:
     # Reported separately from pass/fail, and never silently folded into either.
     # A case that fires on some runs and not others has not been measured yet,
     # and averaging it into a score turns "we do not know" into a number.
+    if handled_by_sibling:
+        print(f"\n  {len(handled_by_sibling)} near-miss(es) a sibling answered, which is correct:")
+        for case in handled_by_sibling:
+            print(f"    {case.stolen_by:<32} {case.query[:44]!r}")
     if unstable:
         print(f"\n  {len(unstable)} unstable case(s) -- fired on some runs, not others:")
         for case in unstable:
