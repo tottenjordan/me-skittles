@@ -185,7 +185,9 @@ def test_catalogue_row_under_the_wrong_section_is_an_error(sandbox, findings):
     path = sandbox / "README.md"
     text = path.read_text()
     assert "`notebook-guidance`" in text, "catalogue shape changed; update this test"
-    path.write_text(text.replace("`notebook-guidance`", "`ml-best-practices`, `notebook-guidance`", 1))
+    path.write_text(
+        text.replace("`notebook-guidance`", "`ml-best-practices`, `notebook-guidance`", 1)
+    )
     # Through check_readme_catalogue, which locates the section and then calls
     # check_catalogue_membership(repo, section, report) with it.
     assert "ml-best-practices" in messages(findings("check_readme_catalogue", sandbox))

@@ -83,7 +83,7 @@ from repo_facts import (
 )
 
 MAX_NAME_LENGTH = 64
-MAX_DESCRIPTION_LENGTH = 1024   # hard API limit
+MAX_DESCRIPTION_LENGTH = 1024  # hard API limit
 MIN_DESCRIPTION_LENGTH = 20
 
 # WARN_DESCRIPTION_LENGTH is imported from repo_facts: every skill's description
@@ -290,7 +290,7 @@ README_FILE = "README.md"
 # the check. Encoding the decoration into the constant instead would mean every
 # cosmetic README edit is also a code edit — and a missed one fails open.
 README_CATALOGUE_LABEL = "skill catalogue"
-README_CATALOGUE_HEADING = "## Skill catalogue"   # for messages only
+README_CATALOGUE_HEADING = "## Skill catalogue"  # for messages only
 
 # Leading decoration on a heading: emoji, symbols, whitespace. Stripped before a
 # heading is matched to CATALOGUE_SECTION_GROUPS.
@@ -458,7 +458,8 @@ def check_skill(skill_file: Path, repo: Path, report: Report) -> None:
             )
         elif len(description) > MAX_DESCRIPTION_LENGTH:
             report.error(
-                rel, f"Description too long: {len(description)} chars (max {MAX_DESCRIPTION_LENGTH})"
+                rel,
+                f"Description too long: {len(description)} chars (max {MAX_DESCRIPTION_LENGTH})",
             )
         elif len(description) > WARN_DESCRIPTION_LENGTH:
             report.warn(
@@ -501,9 +502,7 @@ def check_symlinks(repo: Path, report: Report) -> None:
         if ".git" in link.parts:
             continue
         if link.is_symlink() and not link.exists():
-            report.error(
-                link.relative_to(repo), f"Dangling symlink -> {link.readlink()}"
-            )
+            report.error(link.relative_to(repo), f"Dangling symlink -> {link.readlink()}")
 
 
 def tracked_paths(repo: Path) -> set[str] | None:
@@ -511,7 +510,10 @@ def tracked_paths(repo: Path) -> set[str] | None:
     try:
         out = subprocess.run(
             ["git", "-C", str(repo), "ls-files"],
-            capture_output=True, text=True, check=True, timeout=30,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=30,
         ).stdout
     except (OSError, subprocess.SubprocessError):
         return None
@@ -751,9 +753,7 @@ def check_groups(repo: Path, report: Report) -> None:
 
         name, tree, skills = entry["name"], entry["tree"], entry["skills"]
         if tree not in TREES:
-            report.error(
-                GROUPS_FILE, f"{where}: tree {tree!r} must be one of {', '.join(TREES)}"
-            )
+            report.error(GROUPS_FILE, f"{where}: tree {tree!r} must be one of {', '.join(TREES)}")
             continue
         if (tree, name) in seen_groups:
             report.error(

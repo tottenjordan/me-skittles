@@ -66,11 +66,13 @@ jobs:
       - name: Test the validators
         run: uv run --group dev pytest
 
-      # Lint only. `ruff format --check` would reformat five files that predate
-      # this workflow, and a repo-wide reformat buried inside another change is
-      # unreviewable -- it belongs in its own commit. Left as a follow-up.
-      - name: Lint
-        run: uvx ruff check scripts/ tests/
+      # line-length lives in pyproject.toml and is 100, matching what the code
+      # already was. At ruff's default 88 this step would rewrap ~100 lines on
+      # first run; at 100 it reformatted 13.
+      - name: Lint and format
+        run: |
+          uvx ruff check scripts/ tests/
+          uvx ruff format --check scripts/ tests/
 
       # scripts/ only, and with an explicit search path. A bare `ty check` walks
       # into the skills and reports ~34 diagnostics in vendored helper scripts we
