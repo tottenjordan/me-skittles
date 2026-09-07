@@ -5,6 +5,7 @@
     "Trigger cases only. The skill is installed for every case in this file; the",
     "question is whether it fires, not whether it exists. should_trigger cases",
     "measure recall, should_not_trigger cases measure precision.",
+    "Holdout: the last three should_trigger entries were written and committed BEFORE the description was changed to address the first run's two lifecycle misses. Git history shows the order. They are not proof against overfitting -- the same person wrote both -- but they were not the cases the wording was tuned against, which is the weaker claim actually being made.",
     "",
     "The should_not_trigger set is the part that earns its keep. Every entry is a",
     "near-miss chosen to be genuinely adjacent -- git branch work, parallel work,",
@@ -20,7 +21,10 @@
     "Show me the worktrees on this repo and remove the ones I've already merged.",
     "The feature is done in the worktree -- merge it back to main and clean up.",
     "Where should I put a new worktree so git doesn't try to track it?",
-    "I have three stale worktrees and their branches left over. Tear them down."
+    "I have three stale worktrees and their branches left over. Tear them down.",
+    "Clean up the worktree I finished with yesterday, and its branch.",
+    "Which worktrees do I have, and are any of them safe to delete?",
+    "I'm done with the auth worktree. Fold it into main and get rid of it."
   ],
   "should_not_trigger": [
     "Create a new branch called feature/login and switch to it.",
