@@ -36,6 +36,19 @@ the pilot's two misses.
 
 Early exit is what makes this affordable. Preserve it.
 
+### Amended 2026-09-07: sibling confusion moved ahead of the corpora
+
+As first written, this plan built the eight corpora (then Task 2) before teaching the sandbox to
+install more than one skill (then Task 4). That was the wrong order.
+
+Those corpora are explicitly cross-skill — `writing-plans` against `executing-plans`, the two
+code-review skills against each other — but with a single-skill sandbox, *"nothing fired"* and
+*"the wrong sibling fired"* produce the identical observation. Writing eight corpora against a
+harness that cannot distinguish them means writing eight corpora that have to be revisited, and
+reporting a precision figure that quietly excludes the group's most likely failure.
+
+The sandbox change is small and the scoring already handles it. Do it first.
+
 ---
 
 ## Task 1: Decide the pilot's two misses before writing more corpora
@@ -61,7 +74,21 @@ note.
 **Verify:** re-run `uv run scripts/run-evals.py claude/git-worktrees`; the result matches the
 decision, and the decision is written down.
 
-## Task 2: Corpora for the remaining eight workflow skills
+## Task 2: Sibling confusion
+
+**Files:** `scripts/run-evals.py`
+
+Extend the sandbox to install a *set* of skills rather than one, so a case can assert "`writing-plans`
+fired, not `executing-plans`". `Case.fired` already records the name, and the scoring already treats
+a different skill firing as a miss — only the sandbox needs to change.
+
+This is the check that catches the most expensive real-world failure in a group of adjacent skills,
+and the pilot cannot express it today: with one skill installed, "nothing fired" and "the wrong
+sibling fired" are the same observation.
+
+**Verify:** a case where the neighbouring skill fires is reported as a miss naming what fired.
+
+## Task 3: Corpora for the remaining eight workflow skills
 
 **Files:** `claude/<skill>/evals/evals.json` × 8
 
@@ -73,13 +100,10 @@ are the part that earns the number: every entry must be genuinely adjacent, so a
 description fires on it. A corpus of obvious non-matches reports a precision the skill has not
 earned, which is worse than reporting nothing.
 
-Two hazards specific to this group:
-
-- **These skills overlap each other.** `writing-plans` and `executing-plans` are adjacent by design;
-  so are the two code-review skills. A query that should fire one is a *near-miss for its neighbour*.
-  Reuse them across corpora deliberately — that cross-checking is free signal.
-- **The isolated sandbox holds one skill.** So a corpus cannot currently catch "the wrong sibling
-  fired". Task 4 addresses that; until then, do not claim it does.
+The hazard specific to this group is that **these skills overlap each other.** `writing-plans` and
+`executing-plans` are adjacent by design; so are the two code-review skills. A query that should fire
+one is a *near-miss for its neighbour*, so reuse queries across corpora deliberately — that
+cross-checking is free signal, and Task 2 is what makes it legible rather than ambiguous.
 
 Commit one skill per commit, with its measured result in the message. A corpus without its result is
 an assertion.
@@ -87,7 +111,7 @@ an assertion.
 **Verify:** each corpus runs; record precision and recall per skill; investigate any skill with
 precision below 100% before moving on, since a false fire costs every session.
 
-## Task 3: The output-quality harness
+## Task 4: The output-quality harness
 
 **Files:** Create `scripts/run-quality-evals.py`, `claude/<skill>/evals/quality.json`
 
@@ -110,19 +134,6 @@ Budget: 9 skills × 4 tasks × 2 arms ≈ 72 runs ≈ **$35** for a full pass. T
 a with/without difference should be visible. If no difference shows on a skill, that is a finding
 about the skill, not a broken harness — record it either way.
 
-## Task 4: Sibling confusion
-
-**Files:** `scripts/run-evals.py`
-
-Extend the sandbox to install a *set* of skills rather than one, so a case can assert "`writing-plans`
-fired, not `executing-plans`". `Case.fired` already records the name, and the scoring already treats
-a different skill firing as a miss — only the sandbox needs to change.
-
-This is the check that catches the most expensive real-world failure in a group of adjacent skills,
-and the pilot cannot express it today.
-
-**Verify:** a case where the neighbouring skill fires is reported as a miss naming what fired.
-
 ## Task 5: CI, scoped to what a PR touches
 
 **Files:** `.github/workflows/validate-skills.yml`, `CODE_STANDARDS.md`
@@ -130,7 +141,7 @@ and the pilot cannot express it today.
 Trigger evals only, only for skills whose files a PR changes. 117 corpora per commit is not
 affordable; two or three is.
 
-Requires an API key in CI. **If that is not available or not wanted, stop at Task 4** and keep evals
+Requires an API key in CI. **If that is not available or not wanted, stop before this task** and keep evals
 a local command — say so in `CODE_STANDARDS.md` rather than leaving a workflow that silently never
 runs. A check that cannot run is worse than a documented manual step.
 
