@@ -1,0 +1,34 @@
+{
+  "skill": "subagent-driven-development",
+  "tree": "claude",
+  "notes": [
+    "Trigger cases only. Every skill in the claude/workflow group is installed for",
+    "every case, because a group is the unit people install -- so a case can fail by",
+    "the wrong sibling firing, not just by silence.",
+    "",
+    "The should_not_trigger arm is mostly other members of this group. These skills",
+    "are adjacent by design (plan/execute/delegate, request/receive review), so the",
+    "queries that discriminate between them are the ones worth measuring. Obvious",
+    "non-matches would report a precision none of them has earned."
+  ],
+  "should_trigger": [
+    "Execute this plan with a fresh subagent for each task and review between them.",
+    "The tasks are independent. Farm each one out to its own subagent and check the work.",
+    "Use subagent-driven execution for this plan, with a spec review then a quality review.",
+    "Dispatch a separate agent per task and review each result before the next.",
+    "Run these independent tasks in parallel agents, reviewing each as it lands.",
+    "I want one clean subagent per task, not one session doing everything.",
+    "Delegate each task in the plan to its own agent and grade the output.",
+    "Hand each independent task to a fresh agent with a two-stage review."
+  ],
+  "should_not_trigger": [
+    "Work through the plan yourself, pausing for my review between tasks.",
+    "Write me a plan for this spec first.",
+    "Review this pull request and tell me what's wrong.",
+    "Keep retrying until the build is green.",
+    "Set up a Python project with uv and ruff.",
+    "Run all the tests and summarise the failures.",
+    "Merge this branch into main.",
+    "What's the difference between a subagent and a skill?"
+  ]
+}

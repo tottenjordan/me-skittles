@@ -1,0 +1,34 @@
+{
+  "skill": "modern-python",
+  "tree": "claude",
+  "notes": [
+    "Trigger cases only. Every skill in the claude/workflow group is installed for",
+    "every case, because a group is the unit people install -- so a case can fail by",
+    "the wrong sibling firing, not just by silence.",
+    "",
+    "The should_not_trigger arm is mostly other members of this group. These skills",
+    "are adjacent by design (plan/execute/delegate, request/receive review), so the",
+    "queries that discriminate between them are the ones worth measuring. Obvious",
+    "non-matches would report a precision none of them has earned."
+  ],
+  "should_trigger": [
+    "Set up a new Python package with modern tooling.",
+    "Create a pyproject.toml for this project with uv and ruff configured.",
+    "Migrate this project off setup.py and requirements.txt.",
+    "What's the right way to start a Python project in 2026?",
+    "Configure linting and formatting for this Python codebase.",
+    "I'm writing a standalone Python script that needs third-party packages.",
+    "Move us from pip and black to uv and ruff.",
+    "Scaffold a Python library with the current recommended toolchain."
+  ],
+  "should_not_trigger": [
+    "Fix this TypeError in the parser.",
+    "Explain how this decorator works.",
+    "Write a plan for the Python rewrite.",
+    "Review my Python changes before I merge.",
+    "Keep fixing the Python tests until they pass.",
+    "Run mypy over this file and show me the errors.",
+    "Add a new function to this module.",
+    "The branch is finished. How do I integrate it?"
+  ]
+}

@@ -246,7 +246,7 @@ by group:
 | Group | `claude/` | `gemini/` |
 |---|---|---|
 | `agents` | 4 skills · ~390 tokens | 4 skills · ~380 tokens |
-| `workflow` | 9 skills · ~470 tokens | 9 skills · ~510 tokens |
+| `workflow` | 9 skills · ~480 tokens | 9 skills · ~510 tokens |
 | `testing` | 6 skills · ~190 tokens | 6 skills · ~190 tokens |
 | `diagrams` | 2 skills · ~240 tokens | 2 skills · ~240 tokens |
 | `tools` | 5 skills · ~430 tokens | 3 skills · ~310 tokens |
@@ -274,7 +274,7 @@ diffs without writing. Edit that module, not the cells — the cells are overwri
   its body loads like any other.
 
 `gcp` alone is **61% of the Gemini tree's standing cost** — the argument for installing it only when
-the work is Google Cloud work. On the Claude side, `--group agents --group workflow` costs ~860
+the work is Google Cloud work. On the Claude side, `--group agents --group workflow` costs ~870
 tokens against ~1.8k for `--all`.
 
 Two practical consequences:

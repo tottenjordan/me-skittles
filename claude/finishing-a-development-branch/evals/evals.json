@@ -1,0 +1,34 @@
+{
+  "skill": "finishing-a-development-branch",
+  "tree": "claude",
+  "notes": [
+    "Trigger cases only. Every skill in the claude/workflow group is installed for",
+    "every case, because a group is the unit people install -- so a case can fail by",
+    "the wrong sibling firing, not just by silence.",
+    "",
+    "The should_not_trigger arm is mostly other members of this group. These skills",
+    "are adjacent by design (plan/execute/delegate, request/receive review), so the",
+    "queries that discriminate between them are the ones worth measuring. Obvious",
+    "non-matches would report a precision none of them has earned."
+  ],
+  "should_trigger": [
+    "The feature is done and all tests pass. Should I merge, open a PR, or something else?",
+    "Implementation is complete. What's the right way to integrate this work?",
+    "I've finished this branch. Walk me through wrapping it up.",
+    "Work's done and green. How do I land it?",
+    "This branch is ready. What are my options for getting it into main?",
+    "Everything passes. Help me decide how to finish this off.",
+    "The task is complete -- what's the cleanest way to close it out?",
+    "Done implementing. Time to integrate; what should I do?"
+  ],
+  "should_not_trigger": [
+    "Review my changes before I merge them.",
+    "Remove the worktrees I've finished with and delete their branches.",
+    "Merge main into my branch and fix the conflicts.",
+    "Write a plan for the next feature.",
+    "The tests are still failing. Keep going until they pass.",
+    "Create a branch called feature/login.",
+    "What's a fast-forward merge?",
+    "Set up a new Python package."
+  ]
+}

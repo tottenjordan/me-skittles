@@ -1,12 +1,18 @@
 # /// script
 # requires-python = ">=3.11"
-# dependencies = []
+# dependencies = ["pyyaml>=6.0"]
 # ///
+# pyyaml is not used here directly. Group membership comes from repo_facts'
+# load_groups, and that module parses YAML frontmatter, so importing it pulls
+# pyyaml in. Reading groups.toml with a second parser would avoid the dependency
+# and reintroduce exactly the split that scripts/parse-groups.awk exists to
+# prevent, so the dependency is the cheaper of the two.
 """Measure whether a skill fires when it should, and stays quiet when it should not.
 
     uv run scripts/run-evals.py claude/git-worktrees
-    uv run scripts/run-evals.py claude/git-worktrees --json results.json
-    uv run scripts/run-evals.py claude/git-worktrees --case 3 --keep
+    uv run scripts/run-evals.py claude/git-worktrees --repeat 5 --json results.json
+    uv run scripts/run-evals.py claude/git-worktrees --case 3 --repeat 1 --keep
+    uv run scripts/run-evals.py claude/git-worktrees --isolated   # no siblings
 
 Reads `<skill>/evals/evals.json` and runs every query through a real headless
 Claude Code session, then reports a confusion matrix.
@@ -18,13 +24,29 @@ whether its instructions are any good, they fail for different reasons, and
 averaging them hides both. Output quality needs a with/without baseline and a
 grader; that is deliberately not in this script.
 
+A single run is not a measurement
+---------------------------------
+Two runs of this harness against an identical configuration disagreed on 3 of 19
+cases. Triggering is a model decision, so one run is a sample. `--repeat`
+defaults to 3 and the report separates *unstable* cases -- fired sometimes, not
+others -- from passes and failures, because folding them into a score turns "we
+do not know" into a number.
+
+Measured so far, the two arms are not equally noisy: the should-not-trigger arm
+was stable across runs while every flip landed in should-trigger. Precision
+appears to be the more trustworthy figure; treat recall as approximate.
+
 How a run is isolated
 ---------------------
-Each case gets a throwaway CLAUDE_CONFIG_DIR containing exactly one skill, so
-the listing the model sees is reproducible. Without that, whatever happens to be
-in ~/.claude/skills joins the listing and the result depends on the machine --
-this repo's own author has eleven personal skills installed, several of which
-overlap the trees under test.
+Each case gets a throwaway CLAUDE_CONFIG_DIR holding the skill's whole
+`groups.toml` group, because a group is the unit people install and therefore
+the listing that really occurs. `--isolated` installs the skill alone, which
+measures a configuration nobody runs and reliably reports a higher trigger rate.
+
+Isolation from the machine is the point: without CLAUDE_CONFIG_DIR, whatever is
+in ~/.claude/skills joins the listing and the result depends on whose laptop ran
+it -- this repo's author has eleven personal skills installed, several
+overlapping the trees under test.
 
 Each case also gets a throwaway git repo as its working directory, because a
 query like "set up a worktree" reads differently outside one.
@@ -71,11 +93,46 @@ CASE_TIMEOUT_S = 240
 
 @dataclass
 class Case:
+    """One query, run `--repeat` times because a single run is not a measurement.
+
+    Two runs of this harness against an identical configuration disagreed on 3 of
+    19 cases. Triggering is a model decision, not a deterministic function, so a
+    one-shot result is a sample that reads like a fact -- the pilot's headline
+    "6/8 recall" was exactly that mistake. Every case therefore records each
+    outcome, and `fired` is the majority.
+    """
+
     query: str
     should_trigger: bool
-    fired: str | None = None  # skill name actually invoked, if any
-    first_tool: str | None = None
+    fires: list[str | None] = field(default_factory=list)
+    first_tools: list[str | None] = field(default_factory=list)
     error: str | None = None
+
+    @property
+    def fired(self) -> str | None:
+        """The majority outcome, or None if no single skill won a majority."""
+        if not self.fires:
+            return None
+        names = [f for f in self.fires if f]
+        for name in set(names):
+            if names.count(name) * 2 > len(self.fires):
+                return name
+        return None
+
+    @property
+    def first_tool(self) -> str | None:
+        return self.first_tools[0] if self.first_tools else None
+
+    @property
+    def fire_rate(self) -> str:
+        """How often it fired, e.g. "2/3" -- the honest form of the result."""
+        return f"{sum(1 for f in self.fires if f)}/{len(self.fires)}"
+
+    @property
+    def unstable(self) -> bool:
+        """Fired sometimes and not others. Neither a pass nor a fail: noise."""
+        fired = sum(1 for f in self.fires if f)
+        return 0 < fired < len(self.fires)
 
     @property
     def correct(self) -> bool:
@@ -99,11 +156,36 @@ def load(skill_path: Path) -> Corpus:
     return corpus
 
 
-def sandbox(skill_src: Path, skill_name: str) -> tuple[Path, Path]:
-    """A config dir holding only this skill, and a git repo to run in."""
+def group_siblings(tree: str, skill_name: str) -> list[str]:
+    """Every skill installed alongside this one by `install.sh --group`.
+
+    A group is the unit people install, so it is the listing the model really
+    sees. Installing the skill alone measures something nobody experiences, and
+    it cannot express the failure that matters most in a group of adjacent
+    skills: with one skill present, "nothing fired" and "the wrong sibling
+    fired" are the same observation.
+    """
+    sys.path.insert(0, str(REPO / "scripts"))
+    try:
+        from repo_facts import load_groups
+    finally:
+        sys.path.pop(0)
+    for entry in load_groups(REPO):
+        if entry.get("tree") == tree and skill_name in (entry.get("skills") or []):
+            return [s for s in entry["skills"] if isinstance(s, str)]
+    return [skill_name]
+
+
+def sandbox(tree: str, skill_names: list[str]) -> tuple[Path, Path]:
+    """A config dir holding exactly these skills, and a git repo to run in."""
     config = Path(tempfile.mkdtemp(prefix="evalcfg-"))
     (config / "skills").mkdir()
-    (config / "skills" / skill_name).symlink_to(skill_src)
+    for name in skill_names:
+        src = REPO / tree / name
+        # Plugin bundles have no top-level SKILL.md and are installed through the
+        # marketplace, so symlinking one adds nothing to the listing.
+        if (src / "SKILL.md").is_file():
+            (config / "skills" / name).symlink_to(src)
 
     workdir = Path(tempfile.mkdtemp(prefix="evalwork-"))
     (workdir / "README.md").write_text("# scratch repo\n")
@@ -158,24 +240,26 @@ def first_tool_call(config: Path, workdir: Path, query: str) -> tuple[str | None
     return None, None
 
 
-def run_case(case: Case, skill_src: Path, skill_name: str, keep: bool) -> None:
-    config, workdir = sandbox(skill_src, skill_name)
-    try:
-        name, payload = first_tool_call(config, workdir, case.query)
-        case.first_tool = name
-        if name == "Skill":
-            invoked = (payload or {}).get("skill") or (payload or {}).get("name")
-            case.fired = invoked
-    except subprocess.TimeoutExpired:
-        case.error = f"timed out after {CASE_TIMEOUT_S}s"
-    except (OSError, subprocess.SubprocessError) as exc:
-        case.error = str(exc)
-    finally:
-        if keep:
-            print(f"      kept: config={config} workdir={workdir}")
-        else:
-            shutil.rmtree(config, ignore_errors=True)
-            shutil.rmtree(workdir, ignore_errors=True)
+def run_case(case: Case, tree: str, install: list[str], keep: bool, repeat: int) -> None:
+    for _ in range(repeat):
+        config, workdir = sandbox(tree, install)
+        try:
+            name, payload = first_tool_call(config, workdir, case.query)
+            case.first_tools.append(name)
+            invoked = None
+            if name == "Skill":
+                invoked = (payload or {}).get("skill") or (payload or {}).get("name")
+            case.fires.append(invoked)
+        except subprocess.TimeoutExpired:
+            case.error = f"timed out after {CASE_TIMEOUT_S}s"
+        except (OSError, subprocess.SubprocessError) as exc:
+            case.error = str(exc)
+        finally:
+            if keep:
+                print(f"      kept: config={config} workdir={workdir}")
+            else:
+                shutil.rmtree(config, ignore_errors=True)
+                shutil.rmtree(workdir, ignore_errors=True)
 
 
 def report(corpus: Corpus) -> int:
@@ -185,6 +269,9 @@ def report(corpus: Corpus) -> int:
     misses = [c for c in want if c.fired != corpus.skill]
     false_fires = [c for c in avoid if c.fired is not None]
     quiet = [c for c in avoid if c.fired is None]
+
+    unstable = [c for c in corpus.cases if c.unstable]
+    repeats = max((len(c.fires) for c in corpus.cases), default=0)
 
     print(f"\n  {corpus.tree}/{corpus.skill}")
     print(f"  {'-' * 62}")
@@ -196,7 +283,18 @@ def report(corpus: Corpus) -> int:
             detail = case.error or f"first tool: {case.first_tool or 'none'}"
             if case.fired:
                 detail = f"fired {case.fired}"
-            print(f"    {label:<11} {case.query[:60]!r}  ({detail})")
+            print(f"    {label:<11} {case.query[:60]!r}  ({detail}, {case.fire_rate})")
+
+    # Reported separately from pass/fail, and never silently folded into either.
+    # A case that fires on some runs and not others has not been measured yet,
+    # and averaging it into a score turns "we do not know" into a number.
+    if unstable:
+        print(f"\n  {len(unstable)} unstable case(s) -- fired on some runs, not others:")
+        for case in unstable:
+            print(f"    {case.fire_rate}  {case.query[:60]!r}")
+    if repeats == 1 and len(corpus.cases) > 1:
+        print("\n  Single run per case. Measured disagreement between identical runs is")
+        print("  roughly 1 case in 6, so treat this as one sample: use --repeat 3.")
 
     errored = [c for c in corpus.cases if c.error]
     if errored:
@@ -214,6 +312,17 @@ def main() -> int:
     parser.add_argument("--json", type=Path, help="write full results here")
     parser.add_argument("--case", type=int, help="run only this case index (0-based)")
     parser.add_argument("--keep", action="store_true", help="keep sandboxes for inspection")
+    parser.add_argument(
+        "--repeat",
+        type=int,
+        default=3,
+        help="runs per case; 1 is a sample, not a measurement (default: 3)",
+    )
+    parser.add_argument(
+        "--isolated",
+        action="store_true",
+        help="install only this skill instead of its whole group (hides sibling confusion)",
+    )
     args = parser.parse_args()
 
     skill_path = (REPO / args.skill).resolve()
@@ -225,13 +334,18 @@ def main() -> int:
         return 2
 
     corpus = load(skill_path)
+    install = [corpus.skill] if args.isolated else group_siblings(corpus.tree, corpus.skill)
+    print(f"  installed in each sandbox: {', '.join(install)}")
     selected = corpus.cases if args.case is None else [corpus.cases[args.case]]
     for index, case in enumerate(selected):
         arrow = "should fire" if case.should_trigger else "should not"
         print(f"  [{index + 1}/{len(selected)}] {arrow}: {case.query[:58]}")
-        run_case(case, skill_path, corpus.skill, args.keep)
+        run_case(case, corpus.tree, install, args.keep, args.repeat)
         got = case.fired or case.first_tool or "no tool"
-        print(f"      -> {got}{'  OK' if case.correct else '  <-- unexpected'}")
+        flag = "  OK" if case.correct else "  <-- unexpected"
+        if case.unstable:
+            flag = "  <-- UNSTABLE"
+        print(f"      -> {got} ({case.fire_rate}){flag}")
 
     code = report(corpus if args.case is None else Corpus(corpus.skill, corpus.tree, selected))
     if args.json:
@@ -245,6 +359,9 @@ def main() -> int:
                             "query": c.query,
                             "should_trigger": c.should_trigger,
                             "fired": c.fired,
+                            "fires": c.fires,
+                            "fire_rate": c.fire_rate,
+                            "unstable": c.unstable,
                             "first_tool": c.first_tool,
                             "error": c.error,
                             "correct": c.correct,

@@ -1,0 +1,34 @@
+{
+  "skill": "ralph-wiggum",
+  "tree": "claude",
+  "notes": [
+    "Trigger cases only. Every skill in the claude/workflow group is installed for",
+    "every case, because a group is the unit people install -- so a case can fail by",
+    "the wrong sibling firing, not just by silence.",
+    "",
+    "The should_not_trigger arm is mostly other members of this group. These skills",
+    "are adjacent by design (plan/execute/delegate, request/receive review), so the",
+    "queries that discriminate between them are the ones worth measuring. Obvious",
+    "non-matches would report a precision none of them has earned."
+  ],
+  "should_trigger": [
+    "Keep running the tests and fixing failures until they all pass.",
+    "Iterate on the query until it runs under 200ms.",
+    "Retry this until the build is green, however many attempts it takes.",
+    "Optimise this function until the benchmark target is met.",
+    "Loop on it: fix, run, repeat, until nothing fails.",
+    "Just keep going until the flaky test stops flaking.",
+    "Work at this by trial and error until the metric hits the threshold.",
+    "Grind on this until it's done -- I don't need a plan, just results."
+  ],
+  "should_not_trigger": [
+    "Run the tests once and tell me what fails.",
+    "Write a plan for fixing these failures.",
+    "Work through the written plan with review checkpoints.",
+    "Review my changes before merge.",
+    "Why is this test failing?",
+    "The branch is done and green. Merge or PR?",
+    "Set up pytest for this project.",
+    "Explain what a flaky test is."
+  ]
+}

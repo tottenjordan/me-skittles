@@ -1,0 +1,34 @@
+{
+  "skill": "requesting-code-review",
+  "tree": "claude",
+  "notes": [
+    "Trigger cases only. Every skill in the claude/workflow group is installed for",
+    "every case, because a group is the unit people install -- so a case can fail by",
+    "the wrong sibling firing, not just by silence.",
+    "",
+    "The should_not_trigger arm is mostly other members of this group. These skills",
+    "are adjacent by design (plan/execute/delegate, request/receive review), so the",
+    "queries that discriminate between them are the ones worth measuring. Obvious",
+    "non-matches would report a precision none of them has earned."
+  ],
+  "should_trigger": [
+    "I've finished the feature. Get it reviewed before I merge.",
+    "Can you review the changes on this branch against the requirements?",
+    "Before this goes in, have someone check the implementation.",
+    "I want a code review on what I just wrote.",
+    "Dispatch a reviewer over this diff and report what it finds.",
+    "Check my work meets the spec before I open the PR.",
+    "Please review the code I've just implemented for this ticket.",
+    "Give this a proper review pass before merge."
+  ],
+  "should_not_trigger": [
+    "The reviewer said my error handling is wrong. Should I just change it?",
+    "I got review feedback that seems technically incorrect. What now?",
+    "The feature is complete and tests pass. Merge or PR?",
+    "Write a plan for the next feature.",
+    "Run the linter over this file.",
+    "Keep fixing until CI is green.",
+    "Explain what this regex matches.",
+    "Set up an isolated worktree for the review branch."
+  ]
+}

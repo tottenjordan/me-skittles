@@ -19,18 +19,21 @@ def evals():
     return _load("run_evals", "run-evals.py")
 
 
-def make(evals, query="q", should_trigger=True, fired=None, first_tool=None, error=None):
+def make(evals, query="q", should_trigger=True, fires=None, first_tool=None, error=None):
+    """`fires` is one entry per run; a bare string is shorthand for a single run."""
+    if isinstance(fires, str) or fires is None:
+        fires = [fires]
     return evals.Case(
         query=query,
         should_trigger=should_trigger,
-        fired=fired,
-        first_tool=first_tool,
+        fires=list(fires),
+        first_tools=[first_tool] * len(fires),
         error=error,
     )
 
 
 @pytest.mark.parametrize(
-    "should_trigger, fired, expected",
+    "should_trigger, fires, expected",
     [
         (True, "git-worktrees", True),  # wanted it, got it
         (True, None, False),  # wanted it, silent -> miss
@@ -38,14 +41,14 @@ def make(evals, query="q", should_trigger=True, fired=None, first_tool=None, err
         (False, "git-worktrees", False),  # did not want it, fired -> false positive
     ],
 )
-def test_correctness_of_a_single_case(evals, should_trigger, fired, expected):
-    assert make(evals, should_trigger=should_trigger, fired=fired).correct is expected
+def test_correctness_of_a_single_case(evals, should_trigger, fires, expected):
+    assert make(evals, should_trigger=should_trigger, fires=fires).correct is expected
 
 
 def test_an_errored_case_is_never_correct(evals):
     """A crashed run must not be scored as a pass. Absence of a trigger and
     failure to ask are different things, and only one is a result."""
-    case = make(evals, should_trigger=False, fired=None, error="timed out")
+    case = make(evals, should_trigger=False, fires=None, error="timed out")
     assert case.correct is False
 
 
@@ -72,8 +75,8 @@ def test_report_passes_only_on_a_clean_sweep(evals, capsys):
         skill="demo",
         tree="claude",
         cases=[
-            make(evals, should_trigger=True, fired="demo"),
-            make(evals, should_trigger=False, fired=None),
+            make(evals, should_trigger=True, fires="demo"),
+            make(evals, should_trigger=False, fires=None),
         ],
     )
     assert evals.report(corpus) == 0
@@ -86,7 +89,7 @@ def test_report_fails_on_a_false_fire(evals, capsys):
     corpus = evals.Corpus(
         skill="demo",
         tree="claude",
-        cases=[make(evals, query="unrelated", should_trigger=False, fired="demo")],
+        cases=[make(evals, query="unrelated", should_trigger=False, fires="demo")],
     )
     assert evals.report(corpus) == 1
     assert "FALSE FIRE" in capsys.readouterr().out
@@ -96,7 +99,7 @@ def test_report_fails_on_a_miss(evals, capsys):
     corpus = evals.Corpus(
         skill="demo",
         tree="claude",
-        cases=[make(evals, should_trigger=True, fired=None, first_tool="Bash")],
+        cases=[make(evals, should_trigger=True, fires=None, first_tool="Bash")],
     )
     assert evals.report(corpus) == 1
     out = capsys.readouterr().out
@@ -106,7 +109,7 @@ def test_report_fails_on_a_miss(evals, capsys):
 
 def test_a_different_skill_firing_counts_as_a_miss(evals):
     """Firing *something* is not firing the right thing."""
-    case = make(evals, should_trigger=True, fired="some-other-skill")
+    case = make(evals, should_trigger=True, fires="some-other-skill")
     corpus = evals.Corpus(skill="demo", tree="claude", cases=[case])
     assert evals.report(corpus) == 1
 
@@ -122,3 +125,68 @@ def test_the_shipped_corpus_parses_and_is_balanced(evals):
     corpus = evals.load(REPO / "claude/git-worktrees")
     assert corpus.skill == "git-worktrees"
     assert sum(1 for c in corpus.cases if not c.should_trigger) >= 5
+
+
+# --------------------------------------------------------------------------
+# Repeated runs. Added after two identical-config runs disagreed on 3 of 19
+# cases, which made every single-run number in the pilot a sample rather than
+# a result.
+# --------------------------------------------------------------------------
+
+
+def test_majority_decides_the_outcome(evals):
+    assert make(evals, fires=["demo", "demo", None]).fired == "demo"
+    assert make(evals, fires=["demo", None, None]).fired is None
+
+
+def test_no_majority_means_no_result(evals):
+    """Two different skills once each is not a win for either."""
+    assert make(evals, fires=["a", "b"]).fired is None
+
+
+def test_unstable_is_neither_pass_nor_fail(evals):
+    assert make(evals, fires=["demo", None, "demo"]).unstable is True
+    assert make(evals, fires=["demo", "demo", "demo"]).unstable is False
+    assert make(evals, fires=[None, None, None]).unstable is False
+
+
+def test_fire_rate_reports_the_raw_counts(evals):
+    assert make(evals, fires=["demo", None, "demo"]).fire_rate == "2/3"
+
+
+def test_report_surfaces_unstable_cases_separately(evals, capsys):
+    """An unstable case must be visible, not averaged into a score."""
+    corpus = evals.Corpus(
+        skill="demo",
+        tree="claude",
+        cases=[make(evals, should_trigger=True, fires=["demo", None, "demo"])],
+    )
+    evals.report(corpus)
+    out = capsys.readouterr().out
+    assert "unstable" in out.lower()
+    assert "2/3" in out
+
+
+def test_single_run_is_flagged_as_a_sample(evals, capsys):
+    corpus = evals.Corpus(
+        skill="demo",
+        tree="claude",
+        cases=[
+            make(evals, should_trigger=True, fires="demo"),
+            make(evals, should_trigger=False, fires=None),
+        ],
+    )
+    evals.report(corpus)
+    assert "--repeat 3" in capsys.readouterr().out
+
+
+def test_group_siblings_returns_the_whole_workflow_group(evals):
+    """The realistic listing, not the flattering one."""
+    siblings = evals.group_siblings("claude", "git-worktrees")
+    assert "git-worktrees" in siblings
+    assert "writing-plans" in siblings  # an adjacent skill that can steal the trigger
+    assert len(siblings) > 1
+
+
+def test_group_siblings_falls_back_to_the_skill_alone(evals):
+    assert evals.group_siblings("claude", "not-a-real-skill") == ["not-a-real-skill"]
