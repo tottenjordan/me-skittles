@@ -126,7 +126,7 @@ DESC=$(yq '.description' "$SKILL")
 
 **Validation rules:**
 - No XML/HTML tags in name or description (pattern: `<[^>]+>`)
-- No reserved words ("gemini", "gemini") in name
+- No reserved words ("google", "gemini") in name
 - `type` field ensures correct section validation (if missing, type is inferred from content)
 - Description should include both "what" (tool purpose) and "when" (trigger conditions)
 - No Hugo shortcodes in frontmatter (pattern: `\{\{[<%]`)

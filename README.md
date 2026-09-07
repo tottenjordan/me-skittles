@@ -346,6 +346,7 @@ Runs in CI on every push and pull request, alongside the bundle-specific validat
 | `SKILL.md` under 500 lines | The body loads in full; detail belongs in `references/` |
 | No retired model IDs | A dead model ID sends callers to an endpoint that 404s |
 | No Claude terminology under `gemini/` | That tree is a port, not a copy |
+| Shared files byte-identical across trees | 250 of the 281 files present in both trees are identical. The trees are separate copies on purpose — a skill directory must be self-contained, since copying one is a valid install — so nothing reads both and a fix applied to one tree alone is invisible. Declared exceptions live in `CROSS_TREE_DIVERGENCE`, each with a reason |
 | No dangling symlinks, no committed build artifacts | Both have shipped broken skills before |
 | Correct plugin manifest per tree | `.claude-plugin/` vs `.gemini-plugin/` |
 | `groups.toml` well-formed, complete, and disjoint | Every skill in exactly one group per tree, or `--group` and `--list` quietly omit it. The installer parses it with `scripts/parse-groups.awk`, so this runs that same file and requires its output to match `tomllib`'s — legal TOML the installer would read differently fails here rather than silently there |

@@ -87,6 +87,9 @@ push and PR. It enforces:
 - `SKILL.md` under 500 lines (warns at 450) — move detail into `references/` and link it
 - No dangling symlinks, no committed build artifacts
 - No Claude terminology under `gemini/` — that tree is a port, not a copy
+- Files shared by both trees staying byte-identical unless declared in `CROSS_TREE_DIVERGENCE` with a
+  reason. The trees are separate copies deliberately — a skill directory has to be self-contained —
+  so nothing reads both, and a fix applied to one tree alone would otherwise go unnoticed
 - Plugin bundles using the manifest directory for their tree
 - No retired model IDs outside text discussing their retirement
 - No frontmatter keys outside the Agent Skills spec, such as `when_to_use` — a harness may well read

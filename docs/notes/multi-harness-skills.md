@@ -152,28 +152,47 @@ Codex's 32 KiB budget.
 
 ## 8. How thin is this repo's port, actually?
 
-Measured 2026-09-01, normalising provider names (`claude`→`AGENT`, `gemini`→`AGENT`) across all files:
+> **Corrected 2026-09-02.** The first version of this section reported ~50% duplication using a
+> normalising diff, and it was wrong in the direction that mattered — it **overstated divergence**.
+> It applied a *different* substitution to each side (`claude→AGENT` on one tree, `gemini→AGENT` on
+> the other), so any file containing a word both trees legitimately share — "Gemini" in a Google
+> Cloud skill, say — was rewritten on one side only and reported as differing when the two files are
+> byte-identical. The lesson generalises past this note: **normalise both sides identically, or you
+> are measuring your own substitution rather than the files.** Raw byte comparison is used below.
 
-| | Count |
+Measured 2026-09-02 by byte comparison of every file present in both trees:
+
+| | Files |
+|---|---:|
+| Common files across the 22 shared skills | 281 |
+| **Byte-identical** | **250 (88%)** |
+| Genuinely differing | 31 |
+
+`gcp-diagram` alone contributes 164 identical files — its icon assets, whose duplication
+[decisions-not-taken.md](decisions-not-taken.md) established is a *correctness requirement*, since
+`overlay_icons.py` resolves them relative to `__file__` and copying a skill is a valid install.
+
+So the port is far thinner than first reported, and the interesting question changes with it. It is
+not "should we deduplicate" — self-containment settles that — but **"what keeps 250 independent
+copies in agreement?"** Until 2026-09-02 the answer was diligence, and diligence had already failed
+once: commit `991296e` exists solely to repair cross-tree drift.
+
+`check_cross_tree_parity` now makes byte equality the rule, with `CROSS_TREE_DIVERGENCE` as an
+allowlist of declared exceptions, each carrying its reason. Seeding that allowlist surfaced five
+defects that had already shipped in the Gemini tree, every one of them mechanical-substitution
+damage:
+
+| Defect | Effect |
 |---|---|
-| Skills present in both trees | 22 |
-| **Byte-identical in every file** after normalisation | **11** |
-| Identical `SKILL.md`, differing file list (plugin manifest, `node_modules`) | 2 |
-| Genuinely divergent | 9 |
+| `frozenset({"gemini", "gemini"})` | Duplicate element collapsed the set to **one** word, so the bundle validator silently reserved half of what it should |
+| The same collapse restated in prose | Documentation described the broken behaviour as intended |
+| `Supports Gemini, Gemini (Gemini), Vertex AI` | Substitution destroyed a true statement — ADK really does support Claude |
+| ` ```markdown ` wrapping a ` ```python ` block | Unbalanced fence; the outer block was never closed |
+| Five blank lines dropped from `a2a/references/protocol.md` | Pure noise divergence |
 
-Total real divergence is `+158/-179` lines, concentrated in three skills: `adk` (+76/-50),
-`writing-skills` (+23/-65), `paperbanana` (+20/-20). The remaining six differ by 3–12 lines each.
-
-**Half the shared surface is mechanical duplication maintained by hand** — the same root cause as the
-[documentation drift](documentation-drift.md) already fixed one layer up: a copy of structured data kept
-in sync by diligence.
-
-The honest counter-argument, and the reason this note stops short of recommending generation: the
-`CLAUDE_TERMS` check is deliberately broad (`claude|anthropic`) because the expensive leaks were *prose*,
-not paths. A generator would need a translation table for prose, and **no vendor publishes one**. So
-hand-porting plus CI purity checking is a defensible choice rather than a workaround — but the 11
-fully-identical skills are the subset where that argument does not apply, and they are the candidates for
-mechanical derivation.
+None were allowlisted; all were fixed. That is the argument for the check in one line: **a
+find-and-replace port produces defects that read as plausible text, and only a machine comparing the
+two copies will notice.**
 
 ## 9. Gemini Enterprise Skill Registry
 
