@@ -1,6 +1,6 @@
 ---
 name: git-worktrees
-description: "Use when starting feature work that needs isolation from the current workspace, before executing an implementation plan, or at any point in a worktree's life: creating one, listing what exists, merging a finished worktree back to main, or removing worktrees and deleting their branches. Covers directory selection and gitignore safety, clean-baseline setup, merge-back, and scripted teardown of stale worktrees."
+description: "Use when starting feature work that needs isolation from the current workspace, before executing an implementation plan, or when creating, listing, merging, or cleaning up git worktrees. Covers directory selection and gitignore safety, creation with project setup and a clean test baseline, merging back to main, and teardown of stale worktrees and branches."
 ---
 
 # Git Worktrees
