@@ -1,0 +1,29 @@
+{
+  "skill": "git-worktrees",
+  "tree": "claude",
+  "notes": [
+    "Rubric items come from the skill's own Red flags section, not from a general",
+    "sense of quality: 'Never create a project-local worktree without verifying it is",
+    "ignored, skip the baseline test run, proceed past failing tests without asking,",
+    "or assume a directory location when it is ambiguous.'",
+    "",
+    "Four binary behaviours the fixture is built to expose. scripts/quality_fixtures.py",
+    "ships a .gitignore covering build artefacts but NOT .worktrees, and a suite with",
+    "one genuinely failing test, so items 1, 2 and 3 all have something to catch.",
+    "",
+    "Graded per item, unlabelled, one output at a time. A 'which is better' judgement",
+    "would reward verbosity and say nothing about where the skill actually helps."
+  ],
+  "tasks": [
+    "Set up an isolated workspace so I can work on the auth refactor without disturbing my current checkout.",
+    "I want to work on two branches at once here. Get that set up for me.",
+    "Create a worktree for a hotfix branch and get it ready to work in.",
+    "I need somewhere separate to try a risky refactor of cart.py. Set it up."
+  ],
+  "rubric": [
+    "Checks whether the intended worktree directory is ignored by git (for example with git check-ignore, or by reading .gitignore) BEFORE creating the worktree there",
+    "Runs or explicitly plans to run the repository's test suite after creating the worktree, to establish a baseline",
+    "Notices the test suite is not fully green and stops to ask, rather than carrying on as though the baseline were clean",
+    "Asks where the worktree should live, or states the choice and its reasoning, rather than silently assuming a location"
+  ]
+}

@@ -193,6 +193,57 @@ slash-command-only in practice. Stop trying to make them trigger; document that 
 name. What is *not* established is the mechanism — "the agent already knows how to do the task, so
 no gap is felt" fits every observation here, and remains an explanation rather than a measurement.
 
+## 7. A skill that fires can also be shown to help — `git-worktrees` does
+
+Every section above measures whether a skill *loads*. This one measures whether it changes the
+output. Different question, different harness (`scripts/run-quality-evals.py`), same fixture and
+group for both arms — the only difference is whether the skill is installed.
+
+Four tasks × two arms × two repeats, graded per rubric item, unlabelled. **$9.43 measured.**
+
+| Rubric item (from the skill's own *Red flags*) | with | without |
+|---|---:|---:|
+| Checks the worktree directory is gitignored **before** creating it | **5/8** | **0/8** |
+| Runs or plans a test-suite baseline after creating it | 7/8 | 3/8 |
+| Notices the suite is not green and stops to ask | 7/8 | 3/8 |
+| Asks where the worktree should live rather than assuming | 8/8 | 7/8 |
+| **Total** | **27/32** | **13/32** |
+
+**The skill roughly doubles adherence to its own rules**, and the per-item split says exactly where.
+
+- **The gitignore check is 0/8 without the skill.** Not once, across eight runs, did a session think
+  to check before creating a directory inside the repo. That is a real safety behaviour that exists
+  only because the skill supplies it, and it is the single strongest result in this note.
+- **The location question is 8/8 vs 7/8 — no benefit.** The model asks anyway. That rubric item is
+  carrying no weight, and a "which output is better" judgement would have buried it inside a total.
+  Worth noting it is also the item the grader was least stable on (80%), which fits: behaviour that
+  is near-universal is exactly where a binary call gets borderline.
+
+Cost and turns were near-identical between arms ($0.56 vs $0.62, 13.0 vs 12.8 turns), so the skill
+buys adherence rather than simply making the model do more work.
+
+### What this does not establish
+
+- **Plan mode measures stated procedure, not executed work.** A run that says it will baseline the
+  tests is scored as having done so.
+- **8 samples per arm per item.** The 5/8-vs-0/8 gap is far outside noise; the 8/8-vs-7/8 one is
+  meaningless in either direction.
+- **An LLM graded it.** Validated first — five passes, three of four items unanimous, 4/4 on a
+  planted positive and 0/4 on a planted negative, with results by majority of three — but a
+  regression signal is still not evidence-grade measurement. Raw outputs are kept in the results
+  JSON so a reader can disagree with any grade.
+
+### The method note
+
+The grader gate passed at 0% flips and then failed at 25% on the next run, same grader, same output.
+Both figures came from two gradings of a four-item rubric, where the only possible answers are 0, 25,
+50, 75 and 100 percent — the check was too coarse to measure what it claimed to. Sampled over five
+passes instead, haiku is unanimous on three items and flips one; **Sonnet was worse** on the same
+item, so the cheaper model is also the steadier one here.
+
+That is the third time in this note a single measurement has been mistaken for a result. The
+difference is that this time a gate caught it before it cost anything.
+
 ## What the harness is actually for
 
 Trigger accuracy, and nothing else. Whether a skill *fires* and whether its instructions are any
