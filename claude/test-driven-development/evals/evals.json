@@ -17,7 +17,17 @@
     "",
     "The near-miss arm is mostly other members of the testing group -- an anti-pattern",
     "question belongs to testing-anti-patterns, a flaky-async question to",
-    "condition-based-waiting."
+    "condition-based-waiting.",
+    "",
+    "MATCHED PAIRS. The first run scored 1/8, and the single case that fired was the",
+    "only one asking for guidance -- 'How should I start?' -- while all seven silent",
+    "ones were imperatives: Implement, Add, Fix, Write, Build. That suggests the",
+    "determinant is the user's phrasing, not the skill's description, which would also",
+    "explain why the 2x2 description experiment was null in all four cells.",
+    "",
+    "The last seven entries are those same seven tasks reframed as requests for",
+    "guidance. Same underlying work, different framing, so the pair isolates phrasing.",
+    "Prediction: the guidance-shaped seven fire and the imperative seven stay silent."
   ],
   "should_trigger": [
     "I'm about to add a discount calculator to the checkout. How should I start?",
@@ -27,7 +37,14 @@
     "Write the validation rule for phone numbers.",
     "I need to add pagination to the results endpoint.",
     "Build the currency conversion function.",
-    "There's a bug in the date parser -- sort it out."
+    "There's a bug in the date parser -- sort it out.",
+    "I need retry logic for the API client. What's the right way to approach it?",
+    "We need invoice PDF export. How should I go about building it?",
+    "Empty carts show a negative total. How should I tackle that bug?",
+    "I need to validate phone numbers. Where should I start?",
+    "The results endpoint needs pagination. What's the best way in?",
+    "I have to build currency conversion. How should I start?",
+    "There's a bug in the date parser. How should I approach fixing it?"
   ],
   "should_not_trigger": [
     "Run the test suite and tell me what fails.",
