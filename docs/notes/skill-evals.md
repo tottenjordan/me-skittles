@@ -63,6 +63,46 @@ is several hours. That is why runs are a deliberate command and not a CI step, a
 
 ---
 
+## 4. The result: precision is perfect, recall is bimodal
+
+The whole `claude/workflow` group, measured the same way — group install, six-tool window, one run
+per case. 147 cases, ~33 s each.
+
+| Skill | Recall | Precision |
+|---|---:|---:|
+| `modern-python` | 7/8 | 8/8 |
+| `receiving-code-review` | 7/8 | 8/8 |
+| `finishing-a-development-branch` | 5/8 | 8/8 |
+| `git-worktrees` | 5/11 | 8/8 |
+| `writing-plans` | **0/8** | 8/8 |
+| `executing-plans` | **0/8** | 8/8 |
+| `subagent-driven-development` | **0/8** | 8/8 |
+| `requesting-code-review` | **0/8** | 8/8 |
+| `ralph-wiggum` | **0/8** | 8/8 |
+| **Total** | **24/75** | **72/72** |
+
+**Precision is 72/72.** Not one skill fired on a query belonging to a neighbour, across a near-miss
+arm built almost entirely from other members of the same group. Eleven near-misses were answered by
+the *correct* sibling, which is the group working as designed.
+
+**Recall splits cleanly in two, and the split is not about quality.** Four skills fire; five never
+do. The line between them looks like this:
+
+- **Skills that fire** describe a *situation the user is in* — "the reviewer says X and I disagree",
+  "the feature is done, what now", "set up a Python project with modern tooling". The agent does not
+  already know what to do, so it reaches for something.
+- **Skills that never fire** describe *how to work* — write a plan, execute a plan, delegate to
+  subagents, request a review, iterate until green. The agent simply does the task. It has no felt
+  gap to fill, so nothing gets loaded.
+
+That is a finding about a whole category of skill, not about five badly written descriptions. Five
+of the nine skills in this group are, in practice, **slash-command-only**: they work when invoked by
+name and effectively never trigger on their own.
+
+Worth stating plainly what this does *not* establish. It does not say those five are useless — a
+skill invoked deliberately is still a skill. It does not say their descriptions are wrong. And
+`--max-tools 6` means a skill loaded later in a long session was not measured.
+
 ## What the harness is actually for
 
 Trigger accuracy, and nothing else. Whether a skill *fires* and whether its instructions are any
