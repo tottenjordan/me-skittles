@@ -1,5 +1,12 @@
 # Description Shape Experiment Implementation Plan
 
+> **Completed 2026-09-08. Result: null in all four cells.** Every arm scored 0/12 recall, 8/8
+> precision, zero unstable cases across 96 sessions. Neither shape nor length nor their combination
+> affects whether `writing-plans` fires. Task 6 (adopt the winner) was correctly not executed —
+> there was no winner. Findings in [`docs/notes/skill-evals.md`](../notes/skill-evals.md) §5.
+> Kept as written, including the pre-registered predictions, because a plan edited after the fact
+> to match its outcome is not evidence of anything.
+
 > **For Claude:** REQUIRED SUB-SKILL: Use `executing-plans` skill to implement this plan task-by-task.
 
 **Goal:** Determine whether a skill's *description shape* — naming a failure the agent would

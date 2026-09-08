@@ -103,6 +103,48 @@ Worth stating plainly what this does *not* establish. It does not say those five
 skill invoked deliberately is still a skill. It does not say their descriptions are wrong. And
 `--max-tools 6` means a skill loaded later in a long session was not measured.
 
+## 5. Description wording is not why the silent skills are silent
+
+§4 suggested a rule: firing descriptions **name a failure the agent would otherwise commit**
+("*not performative agreement or blind implementation*"), silent ones state a precondition ("*use
+when you have a spec…*"). Firing descriptions were also 2.3× longer, so shape and length had to be
+separated. A 2×2 on `writing-plans`, four descriptions against one fixed corpus, 96 sessions:
+
+|  | precondition | failure-mode |
+|---|---:|---:|
+| **short** (~90 chars) | 0/12 *(baseline)* | 0/12 |
+| **long** (~300 chars) | 0/12 | 0/12 |
+
+Precision 8/8 in every cell. **Zero unstable cases across all 96 runs** — no case fired even once.
+
+**The hypothesis is dead.** Not weakly supported: refuted, in all four cells, with no variance to
+hide behind. Rewriting a description does not make `writing-plans` trigger, and the pattern spotted
+in §4 was pattern-matching on a sample of nine.
+
+The absence of noise is itself the strongest part of the result. Elsewhere this harness flips 3 cases
+in 19 between identical runs; here nothing moved at all. Whatever suppresses these skills is
+deterministic, and it is not the text.
+
+**What that redirects.** The five silent skills are silent because of *what they are* — process
+instructions about how to work — not how they are written. The agent asked to plan a feature simply
+plans it; there is no felt gap for a "how to plan" skill to fill. So:
+
+- **Do not spend more effort rewriting descriptions** for `writing-plans`, `executing-plans`,
+  `subagent-driven-development`, `requesting-code-review` or `ralph-wiggum`. That road is measured
+  and closed.
+- The remaining options are to accept them as slash-command-only (and consider
+  `disable-model-invocation: true`, which frees listing budget honestly), or to look at a different
+  mechanism entirely.
+
+**Limits.** One skill, `--repeat 2`, `--max-tools 6`. A second silent skill might behave differently,
+though four flat cells with zero variance make that unlikely. And this measures *auto-triggering
+only* — all five work perfectly well when invoked by name.
+
+Method detail worth keeping: the arms lived in `evals/arms.json` and were injected into the sandbox
+at run time, so the repo's `SKILL.md` never changed and the group's `budget_tokens` and the README's
+derived figures stayed out of the experiment. Length matching was asserted in code rather than
+eyeballed, which caught a first draft whose long arms were 22 characters apart.
+
 ## What the harness is actually for
 
 Trigger accuracy, and nothing else. Whether a skill *fires* and whether its instructions are any
