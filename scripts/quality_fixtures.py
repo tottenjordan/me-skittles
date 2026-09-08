@@ -43,7 +43,7 @@ def apply_discount(total, percent):
     return total * (1 - percent / 100)
 '''
 
-FAILING_TEST = '''from cart import apply_discount, subtotal
+FAILING_TEST = """from cart import apply_discount, subtotal
 
 
 def test_subtotal_adds_line_items():
@@ -54,7 +54,7 @@ def test_discount_never_returns_negative():
     # Fails today: apply_discount does not clamp. Left broken on purpose -- the
     # baseline rubric items need a red suite to have anything to detect.
     assert apply_discount(10.0, 150) >= 0
-'''
+"""
 
 AUTH = '''"""Session handling, the module the eval tasks ask about."""
 
