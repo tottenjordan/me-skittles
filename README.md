@@ -51,8 +51,10 @@ A skill is a directory containing a `SKILL.md` with YAML frontmatter:
 
 ```yaml
 ---
-name: writing-plans
-description: Use when you have a spec or requirements for a multi-step task, before touching code
+name: receiving-code-review
+description: Use when receiving code review feedback, before implementing suggestions, especially
+  if feedback seems unclear or technically questionable - requires technical rigor and verification,
+  not performative agreement or blind implementation
 ---
 ```
 
@@ -66,6 +68,27 @@ hand. Two consequences drive everything in this repo:
    files the agent loads on demand.
 
 Both rules are enforced by the validator, not left to reviewer discipline.
+
+### Not every skill auto-triggers, and that is measured
+
+Rule 1 is necessary but not sufficient. Ten skills have been run against real headless sessions —
+see [`docs/notes/skill-evals.md`](docs/notes/skill-evals.md) — and the outcome splits cleanly:
+
+| | Measured |
+|---|---|
+| **Auto-triggers** | `modern-python`, `receiving-code-review`, `finishing-a-development-branch`, `git-worktrees` |
+| **Slash-command only** | `writing-plans`, `executing-plans`, `subagent-driven-development`, `requesting-code-review`, `ralph-wiggum`, `test-driven-development` |
+
+The second group scores at or near **zero** recall while never once firing on a query belonging to a
+neighbour. They describe *how to work*; asked to plan a feature the agent simply plans it, so no gap
+is felt and nothing loads. Rewriting the descriptions does not help — that was tested directly, four
+variants crossing shape against length, and every cell came back zero.
+
+**Invoke those six by name** (`/writing-plans`), which works exactly as expected. The catalogue below
+marks them.
+
+> Measured against Claude Code only, at up to six tool calls into a session. The Gemini ports carry
+> the same text and have not been measured.
 
 ---
 
@@ -104,8 +127,9 @@ is idempotent, repairs broken links, and **only ever removes links it created** 
 or a symlink pointing outside this repo, is reported and left alone. Plugin bundles are skipped
 with an explanation.
 
-Skills auto-trigger from their `description`; user-invocable ones are also slash commands
-(`/paperbanana`). Run `/doctor` to confirm they loaded.
+Skills auto-trigger from their `description` — except the six the catalogue marks *(slash-command only)*, which are
+invoked by name. User-invocable skills are slash commands either way (`/paperbanana`). Run
+`/doctor` to confirm they loaded.
 
 > `property-based-testing` and `testing-handbook-skills` are **plugin bundles**, not single skills —
 > their sub-skills live under `skills/`. Install those through the plugin marketplace mechanism
@@ -138,21 +162,23 @@ other three are grouped by topic.
 
 | Skill | What it covers |
 |---|---|
-| `writing-plans` | Turning a spec into a step-by-step implementation plan |
-| `executing-plans` | Working through a plan with review checkpoints |
-| `subagent-driven-development` | Fresh subagent per task, with a two-stage spec-then-quality review |
-| `requesting-code-review` | Dispatching a reviewer subagent before merging |
+| `writing-plans` *(slash-command only)* | Turning a spec into a step-by-step implementation plan |
+| `executing-plans` *(slash-command only)* | Working through a plan with review checkpoints |
+| `subagent-driven-development` *(slash-command only)* | Fresh subagent per task, with a two-stage spec-then-quality review |
+| `requesting-code-review` *(slash-command only)* | Dispatching a reviewer subagent before merging |
 | `receiving-code-review` | Responding to review feedback with rigor rather than agreement |
 | `finishing-a-development-branch` | Deciding how to integrate completed work — merge, PR, or clean up |
 | `git-worktrees` | The full worktree lifecycle: select a location, verify it's ignored, create, merge, tear down |
-| `ralph-wiggum` | An iterative trial-and-error loop for problems that resist planning |
+| `ralph-wiggum` *(slash-command only)* | An iterative trial-and-error loop for problems that resist planning |
 | `modern-python` | Modern Python project setup — uv, ruff, pyproject *(Claude only)* |
+
+*(slash-command only)* — measured not to auto-trigger; invoke by name. See [How skills work](#-how-skills-work).
 
 ### Testing *(both trees)*
 
 | Skill | What it covers |
 |---|---|
-| `test-driven-development` | Write the failing test first |
+| `test-driven-development` *(slash-command only)* | Write the failing test first |
 | `testing-anti-patterns` | Never test mock behaviour; never add test-only methods to production classes |
 | `condition-based-waiting` | Replacing arbitrary timeouts with condition polling in async tests |
 | `testing-skills-with-subagents` | RED-GREEN-REFACTOR applied to skills themselves |
@@ -164,6 +190,8 @@ The `testing-handbook-skills` bundle covers `libfuzzer`, `aflpp`, `libafl`, `ath
 `coverage-analysis`, `address-sanitizer`, `semgrep`, `codeql`, `wycheproof`, and
 `constant-time-testing`, plus `testing-handbook-generator`, which produces new skills in the same
 shape from handbook source material.
+
+*(slash-command only)* — measured not to auto-trigger; invoke by name. See [How skills work](#-how-skills-work).
 
 ### Diagrams *(both trees)*
 
