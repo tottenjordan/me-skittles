@@ -293,7 +293,15 @@ def find_skill_call(
                 event = json.loads(line)
             except json.JSONDecodeError:
                 continue
-            for chunk in (event.get("message") or {}).get("content") or []:
+            # `message` is not always an object -- some events carry it as a
+            # plain string. Reaching .get() on one killed a 20-minute run after
+            # 14 cases, and intermittently, because the shape depends on what
+            # the session happens to emit.
+            message = event.get("message")
+            if not isinstance(message, dict):
+                message = {}
+            content = message.get("content")
+            for chunk in content if isinstance(content, list) else []:
                 if not (isinstance(chunk, dict) and chunk.get("type") == "tool_use"):
                     continue
                 name = chunk.get("name")

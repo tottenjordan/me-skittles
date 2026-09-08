@@ -351,3 +351,27 @@ def test_arm_preserves_the_body(evals):
     finally:
         shutil.rmtree(config, ignore_errors=True)
         shutil.rmtree(workdir, ignore_errors=True)
+
+
+def test_a_string_message_does_not_crash_the_parser(evals, tmp_path, monkeypatch):
+    """Regression: stream-json sometimes carries `message` as a plain string.
+
+    Calling .get() on one killed a 20-minute run partway through, and did it
+    intermittently, because the shape depends on what the session emits.
+    """
+    script = tmp_path / "claude"
+    events = [
+        {"message": "a bare string, not an object"},
+        {"message": {"content": "also not a list"}},
+        {
+            "message": {
+                "content": [{"type": "tool_use", "name": "Skill", "input": {"skill": "demo"}}]
+            }
+        },
+    ]
+    body = "\n".join(json.dumps(e) for e in events)
+    script.write_text("#!/bin/sh\ncat <<'EOF'\n" + body + "\nEOF\n")
+    script.chmod(0o755)
+    monkeypatch.setenv("PATH", f"{tmp_path}:{os.environ['PATH']}")
+    fired, _ = evals.find_skill_call(tmp_path, tmp_path, "q", 6)
+    assert fired == "demo"  # survived both malformed events and found the real one
