@@ -145,6 +145,54 @@ at run time, so the repo's `SKILL.md` never changed and the group's `budget_toke
 derived figures stayed out of the experiment. Length matching was asserted in code rather than
 eyeballed, which caught a first draft whose long arms were 22 characters apart.
 
+## 6. The category holds outside `claude/workflow`, and phrasing does not rescue it
+
+§5 left one theory standing: process skills — ones telling the agent *how to work* — do not
+auto-trigger, whatever their description says. `test-driven-development` tests it from outside the
+sample that produced it: process-shaped, 79 characters (structurally the same as `writing-plans`'
+84-character precondition), but in the `testing` group.
+
+**Run 1: 1/8 recall, 8/8 precision.** The theory generalises.
+
+The single case that fired looked like a discovery. It was the only query asking for *guidance* —
+"I'm about to add a discount calculator. **How should I start?**" — while all seven silent ones were
+imperatives: *Implement*, *Add*, *Fix*, *Write*, *Build*. And it fired 2/2, stable. That suggested
+the real determinant was never the description but the **user's phrasing**, which would neatly
+explain why the 2×2 came back null in all four cells.
+
+So it was tested properly: the same seven tasks, written twice, once imperative and once
+guidance-shaped. Matched pairs isolate phrasing from subject matter.
+
+**Run 2: 0/7 imperative, 0/8 guidance. Precision 8/8.**
+
+Including the case that had fired 2/2 — this time **0/2**. Across both runs it is 2/4. It was noise,
+and the elegant explanation built on it was a story told about a single sample.
+
+That is the second time in this note a tidy pattern has come from too few observations: §4's
+"firing descriptions name a failure" was pattern-matching on nine skills and died in §5. **A
+hypothesis formed from one case deserves a measurement, not a paragraph** — and the harness's own
+first finding (a single run is a sample) applies to a single *case* just as much as to a single run.
+
+### Where that leaves it
+
+Process skills do not auto-trigger. Confirmed across two groups, and unaffected by:
+
+| Varied | Result |
+|---|---|
+| Description shape (precondition vs failure-naming) | no effect |
+| Description length (84 vs ~300 chars) | no effect |
+| Query phrasing (imperative vs guidance-seeking) | no effect |
+| Group membership (`workflow` vs `testing`) | no effect |
+
+Six skills across two groups now measure at or near zero recall with perfect precision. Nothing
+tried moves the number, and each attempt was cheaper than the last because the harness was already
+built.
+
+**The actionable conclusion is unchanged and now much better supported:** these skills are
+slash-command-only in practice. Stop trying to make them trigger; document that they are invoked by
+name. What is *not* established is the mechanism — "the agent already knows how to do the task, so
+no gap is felt" fits every observation here, and remains an explanation rather than a measurement.
+
 ## What the harness is actually for
 
 Trigger accuracy, and nothing else. Whether a skill *fires* and whether its instructions are any
