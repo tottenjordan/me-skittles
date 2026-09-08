@@ -1,0 +1,34 @@
+{
+  "skill": "receiving-code-review",
+  "tree": "claude",
+  "notes": [
+    "Trigger cases only. Every skill in the claude/workflow group is installed for",
+    "every case, because a group is the unit people install -- so a case can fail by",
+    "the wrong sibling firing, not just by silence.",
+    "",
+    "The should_not_trigger arm is mostly other members of this group. These skills",
+    "are adjacent by design (plan/execute/delegate, request/receive review), so the",
+    "queries that discriminate between them are the ones worth measuring. Obvious",
+    "non-matches would report a precision none of them has earned."
+  ],
+  "should_trigger": [
+    "The reviewer says my error handling is wrong, but I think it's fine. What should I do?",
+    "I got this review feedback and some of it seems technically questionable.",
+    "Here are the review comments. Work out which ones are actually right before changing anything.",
+    "A reviewer asked me to refactor this, but I'm not convinced. How do I respond?",
+    "I've received code review feedback I don't fully understand.",
+    "Someone reviewed my PR and left five comments. Help me evaluate them.",
+    "The review says to use a different pattern. Should I just do it?",
+    "How should I handle review feedback I disagree with?"
+  ],
+  "should_not_trigger": [
+    "Review the changes on this branch before I merge.",
+    "Get a reviewer to check my implementation against the spec.",
+    "Fix the lint errors the linter reported.",
+    "Write a plan for addressing these three bugs.",
+    "The tests fail. Iterate until they pass.",
+    "Merge this and clean up the branch.",
+    "What does 'LGTM' mean?",
+    "Set up a Python project with modern tooling."
+  ]
+}

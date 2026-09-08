@@ -1,0 +1,34 @@
+{
+  "skill": "executing-plans",
+  "tree": "claude",
+  "notes": [
+    "Trigger cases only. Every skill in the claude/workflow group is installed for",
+    "every case, because a group is the unit people install -- so a case can fail by",
+    "the wrong sibling firing, not just by silence.",
+    "",
+    "The should_not_trigger arm is mostly other members of this group. These skills",
+    "are adjacent by design (plan/execute/delegate, request/receive review), so the",
+    "queries that discriminate between them are the ones worth measuring. Obvious",
+    "non-matches would report a precision none of them has earned."
+  ],
+  "should_trigger": [
+    "I have a written plan at docs/plans/search.md. Work through it with review checkpoints.",
+    "Start executing the implementation plan we agreed, stopping between tasks.",
+    "Take this plan and implement it task by task, checking in as you go.",
+    "Work through the plan file, verifying each step before moving on.",
+    "Pick up the plan from where we left off and continue in a fresh session.",
+    "Implement the plan, but I want to review after each task.",
+    "Run through docs/plans/migration.md step by step.",
+    "Follow the written plan and stop for approval at each checkpoint."
+  ],
+  "should_not_trigger": [
+    "Here's the spec. Work out how to build it before we touch code.",
+    "Execute this plan with a fresh subagent per task and a review after each.",
+    "Keep iterating on the optimiser until the benchmark hits 200ms.",
+    "Just make this one small change to the config.",
+    "Review my work before I merge it.",
+    "The feature is done and tests pass. Should I merge or open a PR?",
+    "Set me up an isolated workspace for this branch.",
+    "Explain what this plan file is asking for."
+  ]
+}

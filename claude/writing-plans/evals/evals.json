@@ -1,0 +1,34 @@
+{
+  "skill": "writing-plans",
+  "tree": "claude",
+  "notes": [
+    "Trigger cases only. Every skill in the claude/workflow group is installed for",
+    "every case, because a group is the unit people install -- so a case can fail by",
+    "the wrong sibling firing, not just by silence.",
+    "",
+    "The should_not_trigger arm is mostly other members of this group. These skills",
+    "are adjacent by design (plan/execute/delegate, request/receive review), so the",
+    "queries that discriminate between them are the ones worth measuring. Obvious",
+    "non-matches would report a precision none of them has earned."
+  ],
+  "should_trigger": [
+    "Here's the spec for the CSV export feature. Work out how to build it before we touch code.",
+    "Break this requirements doc into steps someone else could pick up.",
+    "I want a plan for migrating us off the legacy job queue.",
+    "Before you start coding, lay out the approach for adding SSO.",
+    "Turn this ticket into an implementation plan with tasks and tests.",
+    "We need to rewrite the billing module. Plan it out first.",
+    "Design the sequence of changes for splitting this service in two.",
+    "Draft a step-by-step approach for the search rewrite, with checkpoints."
+  ],
+  "should_not_trigger": [
+    "I already have a plan written down. Start working through it.",
+    "Execute docs/plans/2026-09-07-search.md, pausing for review between tasks.",
+    "Rename this variable everywhere it appears.",
+    "The tests are failing. Keep fixing until they pass.",
+    "Review the changes on this branch before I merge.",
+    "What does this function do?",
+    "Add a log line to the error handler.",
+    "The reviewer disagreed with my approach. How should I respond?"
+  ]
+}
