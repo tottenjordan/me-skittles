@@ -288,6 +288,68 @@ recommendations rather than removing it — but that is a judgement about a skil
 per item, and the raw outputs are in the results JSON so the call can be re-examined. Consistent with
 the standing rule: read the outputs before acting on a null.
 
+## 9. Testing §8, and finding it necessary but not sufficient
+
+§8 proposed that a skill's value concentrates in whatever the base model would not do anyway.
+`receiving-code-review` was chosen to try to break it: its rules run *counter* to what looked like a
+strong model default — never say "You're absolutely right", push back when the reviewer is wrong.
+
+**Prediction, recorded before running: a large delta, bigger than `git-worktrees`' +14.**
+
+**Result: +2.** The prediction was wrong, and the reason is more useful than the prediction would
+have been. The without-skill arm scored **29/32 (91%)**. The model already declines to gush, already
+verifies claims against the code, and already pushes back on a reviewer who is technically wrong —
+8/8 on that last one, unprompted. Agreeableness was simply not the default I assumed it was.
+
+### Delta hides two different diagnoses
+
+Comparing all three skills by how much of the *available* room each one recovers:
+
+| Skill | without | with | Δ | headroom | captured |
+|---|---:|---:|---:|---:|---:|
+| `git-worktrees` | 41% | 84% | +14 | 19 | **74%** |
+| `receiving-code-review` | 91% | 97% | +2 | 3 | **67%** |
+| `modern-python` | 52% | 57% | +2 | 19 | **11%** |
+
+The two +2s are not the same thing at all:
+
+- **`receiving-code-review` is effective but redundant.** It captures two-thirds of what is left to
+  capture. There is just almost nothing left — the model is already good at this.
+- **`modern-python` is ineffective.** It has *the same headroom as `git-worktrees`* — 19 items — and
+  recovers a sixth as much of it. It is not redundant; it is failing to land.
+
+Raw delta calls both of those "no benefit". They need opposite responses.
+
+### What this does to §8
+
+**Necessary, not sufficient.** Headroom is a ceiling on what any skill can achieve — a skill aimed at
+behaviour the model already exhibits cannot help, and `receiving-code-review` confirms that. But
+headroom does not deliver value on its own: `modern-python` has plenty and converts almost none.
+
+So: **value ≈ headroom × capture**, and both terms have to be measured. That is a sharper claim than
+§8's, and it comes with a warning attached.
+
+### The warning, which is the real finding
+
+I predicted the wrong answer, confidently, from a plausible story about model defaults. The story was
+that agreeableness is trained in and hard to override. It was wrong, and only a measurement showed
+it.
+
+That is now the fourth hypothesis in this note to die on contact with data — after description shape,
+query phrasing, and a "stable 2/2" that was noise. **The pattern is not that the hypotheses were
+careless. It is that reasoning about what a model will do is unreliable at this granularity, full
+stop.** Which parts of a skill are load-bearing cannot be argued; they have to be measured, per
+skill, and the measurement is cheap enough that there is no excuse not to.
+
+### Disposition
+
+- **`git-worktrees`** — keep as is. Working, with room to work in.
+- **`receiving-code-review`** — keep, but it is a candidate for shortening: it earns little because
+  little is available, and it costs 234 characters every session.
+- **`modern-python`** — the one that actually needs attention, which is the opposite of what its +2
+  suggested in §8. 19 items of headroom and 11% capture means the advice is stated but not followed;
+  worth reading the raw outputs to see whether it is competing with the model's own habits.
+
 ## What the harness is actually for
 
 Trigger accuracy, and nothing else. Whether a skill *fires* and whether its instructions are any
