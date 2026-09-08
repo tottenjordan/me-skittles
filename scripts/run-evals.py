@@ -77,6 +77,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -86,6 +87,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 EVALS_FILE = "evals/evals.json"
+ARMS_FILE = "evals/arms.json"
 
 # Long enough for a first tool call on a slow model, short enough that a hung run
 # does not stall a corpus. Reaching it is reported as a timeout, never as a miss:
@@ -195,15 +197,53 @@ def group_siblings(tree: str, skill_name: str) -> list[str]:
     return [skill_name]
 
 
-def sandbox(tree: str, skill_names: list[str]) -> tuple[Path, Path]:
-    """A config dir holding exactly these skills, and a git repo to run in."""
+DESCRIPTION_LINE = re.compile(r"^description:.*?(?=^[A-Za-z_-]+:|^---)", re.MULTILINE | re.DOTALL)
+
+
+def swap_description(text: str, description: str) -> str:
+    """Replace a SKILL.md's frontmatter description, leaving the body byte-identical.
+
+    Only the description moves. Swapping anything else would put two variables in
+    an experiment designed to isolate one.
+    """
+    replacement = "description: " + json.dumps(description) + "\n"
+    swapped, count = DESCRIPTION_LINE.subn(lambda _m: replacement, text, count=1)
+    if count != 1:
+        raise ValueError("no frontmatter description to replace")
+    return swapped
+
+
+def sandbox(
+    tree: str,
+    skill_names: list[str],
+    arm: str | None = None,
+    under_test: str | None = None,
+) -> tuple[Path, Path]:
+    """A config dir holding exactly these skills, and a git repo to run in.
+
+    With `arm`, the skill under test is copied and given that description instead
+    of its own; every sibling stays a symlink. The copy is what keeps the
+    experiment honest -- editing the repo's SKILL.md would move the group's
+    budget_tokens and the README figures derived from it, adding two variables to
+    a test designed to isolate one.
+    """
     config = Path(tempfile.mkdtemp(prefix="evalcfg-"))
     (config / "skills").mkdir()
+    target = under_test or (skill_names[0] if skill_names else None)
     for name in skill_names:
         src = REPO / tree / name
         # Plugin bundles have no top-level SKILL.md and are installed through the
         # marketplace, so symlinking one adds nothing to the listing.
-        if (src / "SKILL.md").is_file():
+        if not (src / "SKILL.md").is_file():
+            continue
+        if arm is not None and name == target:
+            dst = config / "skills" / name
+            shutil.copytree(src, dst, symlinks=True)
+            skill_md = dst / "SKILL.md"
+            skill_md.write_text(
+                swap_description(skill_md.read_text(encoding="utf-8"), arm), encoding="utf-8"
+            )
+        else:
             (config / "skills" / name).symlink_to(src)
 
     workdir = Path(tempfile.mkdtemp(prefix="evalwork-"))
@@ -272,10 +312,17 @@ def find_skill_call(
 
 
 def run_case(
-    case: Case, tree: str, install: list[str], keep: bool, repeat: int, max_tools: int
+    case: Case,
+    tree: str,
+    install: list[str],
+    keep: bool,
+    repeat: int,
+    max_tools: int,
+    arm: str | None = None,
+    under_test: str | None = None,
 ) -> None:
     for _ in range(repeat):
-        config, workdir = sandbox(tree, install)
+        config, workdir = sandbox(tree, install, arm=arm, under_test=under_test)
         try:
             invoked, tools = find_skill_call(config, workdir, case.query, max_tools)
             case.first_tools.append(tools[0] if tools else None)
@@ -355,6 +402,10 @@ def main() -> int:
         help="runs per case; 1 is a sample, not a measurement (default: 3)",
     )
     parser.add_argument(
+        "--arm",
+        help=f"description variant from {ARMS_FILE} to use instead of the skill's own",
+    )
+    parser.add_argument(
         "--max-tools",
         type=int,
         default=6,
@@ -377,12 +428,35 @@ def main() -> int:
 
     corpus = load(skill_path)
     install = [corpus.skill] if args.isolated else group_siblings(corpus.tree, corpus.skill)
+    arm_text = None
+    if args.arm:
+        arms_path = skill_path / ARMS_FILE
+        if not arms_path.is_file():
+            print(f"No {ARMS_FILE} under {args.skill}", file=sys.stderr)
+            return 2
+        arms = json.loads(arms_path.read_text(encoding="utf-8")).get("arms", {})
+        if args.arm not in arms:
+            print(f"No arm {args.arm!r}; have {', '.join(sorted(arms))}", file=sys.stderr)
+            return 2
+        arm_text = arms[args.arm]
+        # Printed with the result so a number is never separated from the
+        # condition that produced it.
+        print(f"  arm: {args.arm} ({len(arm_text)} chars)")
     print(f"  installed in each sandbox: {', '.join(install)}")
     selected = corpus.cases if args.case is None else [corpus.cases[args.case]]
     for index, case in enumerate(selected):
         arrow = "should fire" if case.should_trigger else "should not"
         print(f"  [{index + 1}/{len(selected)}] {arrow}: {case.query[:58]}")
-        run_case(case, corpus.tree, install, args.keep, args.repeat, args.max_tools)
+        run_case(
+            case,
+            corpus.tree,
+            install,
+            args.keep,
+            args.repeat,
+            args.max_tools,
+            arm=arm_text,
+            under_test=corpus.skill,
+        )
         got = case.fired or case.first_tool or "no tool"
         flag = "  OK" if case.correct else "  <-- unexpected"
         if case.unstable:

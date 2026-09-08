@@ -9,7 +9,12 @@
     "The should_not_trigger arm is mostly other members of this group. These skills",
     "are adjacent by design (plan/execute/delegate, request/receive review), so the",
     "queries that discriminate between them are the ones worth measuring. Obvious",
-    "non-matches would report a precision none of them has earned."
+    "non-matches would report a precision none of them has earned.",
+    "",
+    "The last four should_trigger entries are HOLDOUT cases for the description-shape",
+    "experiment (docs/plans/2026-09-08-description-shape-experiment.md). They were",
+    "written and committed before any candidate description existed, so no arm could",
+    "be tuned against them. Git history shows the order."
   ],
   "should_trigger": [
     "Here's the spec for the CSV export feature. Work out how to build it before we touch code.",
@@ -19,7 +24,11 @@
     "Turn this ticket into an implementation plan with tasks and tests.",
     "We need to rewrite the billing module. Plan it out first.",
     "Design the sequence of changes for splitting this service in two.",
-    "Draft a step-by-step approach for the search rewrite, with checkpoints."
+    "Draft a step-by-step approach for the search rewrite, with checkpoints.",
+    "We need to add multi-tenant support. Where do I even start?",
+    "This ticket is huge and I don't know what order to do things in.",
+    "Can you scope out the work for the notifications rewrite?",
+    "I keep half-finishing this refactor. Help me get organised before I write more code."
   ],
   "should_not_trigger": [
     "I already have a plan written down. Start working through it.",
