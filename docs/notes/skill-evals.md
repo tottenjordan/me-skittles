@@ -244,6 +244,50 @@ item, so the cheaper model is also the steadier one here.
 That is the third time in this note a single measurement has been mistaken for a result. The
 difference is that this time a gate caught it before it cost anything.
 
+## 8. `modern-python` buys one thing, and the model already knew the rest
+
+Same harness, same method, 16 runs, **$10.09 measured**. Rubric from the skill's own *Anti-Patterns*
+table — concrete tool choices, so the grader was near-mechanical (5/5 items unanimous over five
+passes, 5/5 planted positive, 0/5 planted negative: the cleanest gate of any skill so far).
+
+| Rubric item | with | without | Δ |
+|---|---:|---:|---:|
+| uv for dependency management, not pip/Poetry | 7/8 | 7/8 | 0 |
+| ruff for lint/format, not black/flake8 | 5/8 | 5/8 | 0 |
+| **`ty` as the type checker, not mypy/pyright** | **5/8** | **0/8** | **+5** |
+| `uv run` rather than activating a venv | 2/8 | 4/8 | −2 |
+| `[dependency-groups]`, not optional-dependencies | 4/8 | 5/8 | −1 |
+| **Total** | **23/40** | **21/40** | **+2** |
+
+**A near-null, and far more useful than a clean win would have been.** Two items out of forty is
+inside the noise this note has repeatedly warned about.
+
+The shape is what matters:
+
+- **uv and ruff are identical in both arms.** The base model reaches for them unprompted. Every
+  character the skill spends advocating them is buying nothing.
+- **`ty` is the entire measurable contribution** — 0/8 without, 5/8 with. It is new and niche, so
+  the model has no default pull toward it. That is precisely the kind of thing a skill *can* teach.
+- **Two items went the wrong way.** Probably noise at these sample sizes, but reported rather than
+  rounded away, and worth a look if this is ever re-run.
+
+### The generalisable lesson
+
+**A skill's value is concentrated in whatever the base model would not do anyway.** `modern-python`
+is a well-written document whose advice is, in 2026, mostly the model's own default. Restating
+current best practice is dead weight; the parts that earn their place are the non-obvious choices —
+`ty`, `prek`, `uv_build`, `[dependency-groups]`.
+
+That is a testable claim about every skill in this repo, and it points at a cheaper design than
+"write a thorough guide": say only what the model gets wrong on its own.
+
+### Disposition
+
+Not deleted, and not left alone. The evidence supports **shortening it** to the non-obvious
+recommendations rather than removing it — but that is a judgement about a skill, made on 8 samples
+per item, and the raw outputs are in the results JSON so the call can be re-examined. Consistent with
+the standing rule: read the outputs before acting on a null.
+
 ## What the harness is actually for
 
 Trigger accuracy, and nothing else. Whether a skill *fires* and whether its instructions are any

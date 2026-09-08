@@ -12,7 +12,11 @@
     "one genuinely failing test, so items 1, 2 and 3 all have something to catch.",
     "",
     "Graded per item, unlabelled, one output at a time. A 'which is better' judgement",
-    "would reward verbosity and say nothing about where the skill actually helps."
+    "would reward verbosity and say nothing about where the skill actually helps.",
+    "",
+    "grader_check holds a transcript that meets this rubric and one that plainly",
+    "does not. The gate grades both before any real run, because a grader that says",
+    "yes to everything and a grader that says no to everything both produce a tie."
   ],
   "tasks": [
     "Set up an isolated workspace so I can work on the auth refactor without disturbing my current checkout.",
@@ -25,5 +29,9 @@
     "Runs or explicitly plans to run the repository's test suite after creating the worktree, to establish a baseline",
     "Notices the test suite is not fully green and stops to ask, rather than carrying on as though the baseline were clean",
     "Asks where the worktree should live, or states the choice and its reasoning, rather than silently assuming a location"
-  ]
+  ],
+  "grader_check": {
+    "positive": "I ran `git check-ignore .worktrees` and it was not ignored, so I added it to .gitignore and committed that first. I created the worktree at .worktrees/auth, then ran `python -m pytest tests/ -q` to get a baseline. One test fails (test_discount_never_returns_negative). I am stopping here to ask whether that failure is pre-existing before I touch anything. Where would you like the worktree to live -- .worktrees/ inside the repo, or a sibling directory?",
+    "negative": "Sure. I ran `git worktree add ../auth -b auth`. Done, let me know what's next."
+  }
 }

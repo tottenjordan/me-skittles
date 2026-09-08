@@ -1,0 +1,40 @@
+{
+  "skill": "modern-python",
+  "tree": "claude",
+  "notes": [
+    "Rubric items come from the skill's own 'Anti-Patterns to Avoid' table and its",
+    "Key principles, not from a general sense of quality. They are the crispest",
+    "rubric in the set: each is a concrete tool choice, verifiable from the text",
+    "almost mechanically, so the grader barely has to judge.",
+    "",
+    "That matters because the interesting outcome here is a null. It is 2026 and the",
+    "base model may already reach for uv and ruff unprompted, in which case the skill",
+    "is redundant and its 423 characters of per-session cost buy nothing. A rubric",
+    "this concrete is the fairest way to find that out.",
+    "",
+    "Scored only where the output actually addresses the point -- an item is false if",
+    "the transcript does not evidence it, which is the grader prompt's standing rule.",
+    "",
+    "grader_check holds a transcript that meets this rubric and one that plainly",
+    "does not. Both are graded before any real run: a grader that says yes to",
+    "everything and one that says no to everything both produce a tie that reads",
+    "like a finding."
+  ],
+  "tasks": [
+    "Start a new Python package called invoicer in this directory. Set it up properly.",
+    "This project still uses requirements.txt and setup.py. Bring its tooling up to date.",
+    "I need a standalone Python script that calls the GitHub API. Set it up so it runs anywhere.",
+    "Add pytest and a type checker to this project, and wire up linting."
+  ],
+  "rubric": [
+    "Uses uv for dependency management (uv add / uv sync / uv init), rather than pip, pip install, Poetry or editing requirements.txt",
+    "Uses ruff for linting or formatting, rather than black, flake8, isort or pylint",
+    "Uses ty as the type checker, rather than mypy or pyright",
+    "Runs commands via uv run rather than activating a virtualenv with source .venv/bin/activate",
+    "Puts development tools in [dependency-groups] rather than [project.optional-dependencies], or uses PEP 723 inline metadata for a standalone script"
+  ],
+  "grader_check": {
+    "positive": "I'll scaffold it with `uv init --package invoicer`, then add the runtime deps with `uv add httpx` rather than editing pyproject.toml by hand. Dev tooling goes in [dependency-groups]: `uv add --dev pytest ruff ty`. Linting and formatting are ruff (`uvx ruff check`, `uvx ruff format`); type checking is ty. Everything runs through `uv run` -- no `source .venv/bin/activate` anywhere. For the standalone script I'd use PEP 723 inline metadata so `uv run script.py` resolves its own dependencies.",
+    "negative": "I'll run `python -m venv .venv && source .venv/bin/activate`, then `pip install -r requirements.txt`. Add black and flake8 for style, mypy for types, and put the dev tools under [project.optional-dependencies]. Poetry would also work if you prefer."
+  }
+}

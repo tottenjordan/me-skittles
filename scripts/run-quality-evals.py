@@ -226,26 +226,30 @@ def make_sandbox(tree: str, skills: list[str]):
     return config, workdir
 
 
-def check_grader(rubric: list[str], model: str, passes: int = 5) -> int:
+def check_grader(spec: dict, model: str, passes: int = 5) -> int:
     """Prove the grader is usable before believing anything it says.
 
     Two failure modes, both of which look exactly like a null result: a grader
     that disagrees with itself, and a grader that says yes to everything.
 
+    The planted samples live in the skill's own quality.json, not here. They were
+    hardcoded once, written for git-worktrees, and the first other skill to use
+    this gate failed it -- the grader correctly scored a worktree transcript 0/5
+    against a rubric about uv and ruff. The check was asking the wrong question,
+    and only looked like a grader problem.
+
     Stability is measured over `passes` gradings, not two. With a four-item
-    rubric, two passes can only ever report 0/25/50/75/100 percent, so a single
-    flip reads as a 25% failure rate -- which is how the first version of this
-    check passed once and failed the next run on the same grader.
+    rubric, two passes can only report 0/25/50/75/100 percent, so a single flip
+    reads as a 25% failure rate -- which is how this gate passed once and failed
+    the next run on the same grader and the same output.
     """
-    positive = (
-        "I ran `git check-ignore .worktrees` and it was not ignored, so I added it to "
-        ".gitignore and committed that first. I created the worktree at .worktrees/auth, "
-        "then ran `python -m pytest tests/ -q` to get a baseline. One test fails "
-        "(test_discount_never_returns_negative). I am stopping here to ask whether that "
-        "failure is pre-existing before I touch anything. Where would you like the "
-        "worktree to live -- .worktrees/ inside the repo, or a sibling directory?"
-    )
-    negative = "Sure. I ran `git worktree add ../auth -b auth`. Done, let me know what's next."
+    rubric = spec["rubric"]
+    check = spec.get("grader_check") or {}
+    positive, negative = check.get("positive"), check.get("negative")
+    if not positive or not negative:
+        print("  FAIL: quality.json needs grader_check.positive and .negative")
+        print("  (a transcript that meets this rubric, and one that plainly does not)")
+        return 1
 
     print(f"  grader: {model}, stability over {passes} passes")
     runs = [g for g in (grade_once(positive, rubric, model) for _ in range(passes)) if g]
@@ -271,8 +275,8 @@ def check_grader(rubric: list[str], model: str, passes: int = 5) -> int:
     print(f"  planted positive: {sum(pos)}/{len(rubric)} met (expect most)")
     print(f"  planted negative: {sum(neg)}/{len(rubric)} met (expect ~0)")
 
-    # One shaky item out of four is tolerable *because* results use a majority
-    # vote; more than that means the rubric itself is ambiguous, not the grader.
+    # One shaky item is tolerable *because* results use a majority vote; more
+    # than that means the rubric is ambiguous, not the grader.
     ok = len(shaky) <= 1 and sum(pos) >= len(rubric) - 1 and sum(neg) <= 1
     print("  grader is usable" if ok else "  FAIL: grader unusable; do not run the pilot")
     return 0 if ok else 1
@@ -303,7 +307,7 @@ def main() -> int:
 
     # Always run first. A grader that flip-flops or says yes to everything
     # produces a tie, and a tie reads exactly like "the skill does not help".
-    if check_grader(rubric, args.model) != 0:
+    if check_grader(spec, args.model) != 0:
         return 1
     if args.check_grader:
         return 0
