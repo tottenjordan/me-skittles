@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 
 import pytest
 from conftest import _load
@@ -303,3 +304,50 @@ def test_a_sibling_firing_on_a_should_trigger_case_is_still_a_miss(evals):
     )
     assert case.correct is False
     assert case.stolen_by == "other"
+
+
+# --------------------------------------------------------------------------
+# Description arms. The 2x2 shape/length experiment swaps a skill's
+# description per run; the repo's own SKILL.md must never move, or the
+# group budget and the README's stated figures become extra variables.
+# --------------------------------------------------------------------------
+
+
+def test_arm_overrides_the_description_in_the_sandbox(evals, tmp_path):
+    """The repo's SKILL.md must be untouched; only the sandbox copy changes."""
+    config, workdir = evals.sandbox("claude", ["writing-plans"], arm="probe text here")
+    try:
+        text = (config / "skills" / "writing-plans" / "SKILL.md").read_text()
+        assert "probe text here" in text
+        original = (evals.REPO / "claude/writing-plans/SKILL.md").read_text()
+        assert "probe text here" not in original
+    finally:
+        shutil.rmtree(config, ignore_errors=True)
+        shutil.rmtree(workdir, ignore_errors=True)
+
+
+def test_arm_leaves_siblings_as_symlinks(evals):
+    """Only the skill under test is copied; the rest of the group stays linked."""
+    config, workdir = evals.sandbox(
+        "claude", ["writing-plans", "git-worktrees"], arm="probe", under_test="writing-plans"
+    )
+    try:
+        assert not (config / "skills" / "writing-plans").is_symlink()
+        assert (config / "skills" / "git-worktrees").is_symlink()
+    finally:
+        shutil.rmtree(config, ignore_errors=True)
+        shutil.rmtree(workdir, ignore_errors=True)
+
+
+def test_arm_preserves_the_body(evals):
+    """Only the description line changes. Swapping the body would test two things."""
+    config, workdir = evals.sandbox("claude", ["writing-plans"], arm="probe")
+    try:
+        swapped = (config / "skills" / "writing-plans" / "SKILL.md").read_text()
+        original = (evals.REPO / "claude/writing-plans/SKILL.md").read_text()
+        marker = "## Bite-Sized Task Granularity"
+        assert marker in original and marker in swapped
+        assert swapped.split("---", 2)[2] == original.split("---", 2)[2]
+    finally:
+        shutil.rmtree(config, ignore_errors=True)
+        shutil.rmtree(workdir, ignore_errors=True)

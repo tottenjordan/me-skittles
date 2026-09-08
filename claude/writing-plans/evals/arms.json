@@ -1,0 +1,23 @@
+{
+  "skill": "writing-plans",
+  "notes": [
+    "Four description variants for the 2x2 shape/length experiment; see",
+    "docs/plans/2026-09-08-description-shape-experiment.md.",
+    "",
+    "Rows are length, columns are shape. 'precondition' states when the skill",
+    "applies; 'failure-mode' names what goes wrong without it -- the property every",
+    "firing description in claude/workflow has and no silent one does.",
+    "",
+    "Lengths are matched deliberately: A is within 10 characters of baseline, B",
+    "within 20 of C. An unmatched pair collapses the 2x2 back into the confounded",
+    "single-arm test this experiment exists to avoid, so the matching is asserted",
+    "before the arms are written rather than eyeballed. The first draft failed that",
+    "assertion at 22 characters apart and was retuned."
+  ],
+  "arms": {
+    "baseline": "Use when you have a spec or requirements for a multi-step task, before touching code",
+    "A-short-failure": "Use before coding a multi-step task, so the order is settled first, not discovered halfway",
+    "B-long-precondition": "Use when you have a spec, a requirements document, a ticket, or any stated requirements for a task that will take more than one step, at the point before any implementation code is written. Covers task breakdown, ordering, file-level detail, test strategy, and review checkpoints for work of this kind.",
+    "C-long-failure": "Use before coding a multi-step task, so the order is settled first, not discovered halfway. Without it the usual failures are implementing before the order is known, hitting a dependency that forces a rewrite of finished work, and ending up with no checkpoints anyone can review against."
+  }
+}
