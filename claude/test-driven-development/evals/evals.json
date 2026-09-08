@@ -1,0 +1,42 @@
+{
+  "skill": "test-driven-development",
+  "tree": "claude",
+  "notes": [
+    "Generalisation check for the category theory that survived the description-shape",
+    "experiment: process skills -- ones telling the agent HOW to work -- do not",
+    "auto-trigger regardless of wording. See docs/notes/skill-evals.md section 5.",
+    "",
+    "test-driven-development is the clean test. Its description is process-shaped and",
+    "79 characters, structurally the same as writing-plans' 84-character precondition,",
+    "but it sits in the testing group rather than workflow, so it is not the same",
+    "sample that produced the theory.",
+    "",
+    "Prediction, recorded before running: 0/8, matching the five silent workflow",
+    "skills. A non-zero result confines the theory to claude/workflow and means",
+    "something else is going on.",
+    "",
+    "The near-miss arm is mostly other members of the testing group -- an anti-pattern",
+    "question belongs to testing-anti-patterns, a flaky-async question to",
+    "condition-based-waiting."
+  ],
+  "should_trigger": [
+    "I'm about to add a discount calculator to the checkout. How should I start?",
+    "Implement the retry logic for the API client.",
+    "Add a feature that exports invoices as PDF.",
+    "Fix the bug where an empty cart shows a negative total.",
+    "Write the validation rule for phone numbers.",
+    "I need to add pagination to the results endpoint.",
+    "Build the currency conversion function.",
+    "There's a bug in the date parser -- sort it out."
+  ],
+  "should_not_trigger": [
+    "Run the test suite and tell me what fails.",
+    "This test asserts on how many times a mock was called. Is that a problem?",
+    "The async test sleeps for two seconds. Make it deterministic.",
+    "Explain what this test is actually checking.",
+    "Rename this test file to match the module.",
+    "Write a plan for the payments rewrite.",
+    "Review my changes before I merge them.",
+    "What's the difference between a stub and a mock?"
+  ]
+}
