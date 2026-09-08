@@ -156,8 +156,8 @@ def run_once(config: Path, workdir: Path, task: str, timeout_s: int = 600) -> Ou
     return Output(error="no result event")
 
 
-def grade(output_text: str, rubric: list[str], model: str = GRADER_MODEL) -> list[bool] | None:
-    """Grade one unlabelled output. Returns one bool per rubric item, or None."""
+def grade_once(output_text: str, rubric: list[str], model: str = GRADER_MODEL) -> list[bool] | None:
+    """One grading pass. Returns one bool per rubric item, or None if unparseable."""
     numbered = "\n".join(f"{i + 1}. {item}" for i, item in enumerate(rubric))
     prompt = GRADER_PROMPT.format(rubric=numbered, output=output_text)
     try:
@@ -184,6 +184,25 @@ def grade(output_text: str, rubric: list[str], model: str = GRADER_MODEL) -> lis
     return [by_n[n] for n in range(1, len(rubric) + 1)]
 
 
+def grade(
+    output_text: str, rubric: list[str], model: str = GRADER_MODEL, repeat: int = 3
+) -> list[bool] | None:
+    """Grade an output `repeat` times and take the majority answer per item.
+
+    A single grading is a sample, not a verdict. Measured on this rubric, the
+    grader agreed with itself on all four items across five passes -- and then, on
+    a different pair of passes, flipped one. Rare, real, and indistinguishable
+    from a genuine difference if it lands in only one arm.
+
+    Majority vote over an odd number of passes makes an isolated flip harmless,
+    at a cost that barely registers because grading runs on a small model.
+    """
+    passes = [g for g in (grade_once(output_text, rubric, model) for _ in range(repeat)) if g]
+    if not passes:
+        return None
+    return [sum(p[i] for p in passes) * 2 > len(passes) for i in range(len(rubric))]
+
+
 def load_quality(skill_path: Path) -> dict:
     return json.loads((skill_path / QUALITY_FILE).read_text(encoding="utf-8"))
 
@@ -207,11 +226,16 @@ def make_sandbox(tree: str, skills: list[str]):
     return config, workdir
 
 
-def check_grader(rubric: list[str], model: str) -> int:
+def check_grader(rubric: list[str], model: str, passes: int = 5) -> int:
     """Prove the grader is usable before believing anything it says.
 
     Two failure modes, both of which look exactly like a null result: a grader
     that disagrees with itself, and a grader that says yes to everything.
+
+    Stability is measured over `passes` gradings, not two. With a four-item
+    rubric, two passes can only ever report 0/25/50/75/100 percent, so a single
+    flip reads as a 25% failure rate -- which is how the first version of this
+    check passed once and failed the next run on the same grader.
     """
     positive = (
         "I ran `git check-ignore .worktrees` and it was not ignored, so I added it to "
@@ -223,25 +247,34 @@ def check_grader(rubric: list[str], model: str) -> int:
     )
     negative = "Sure. I ran `git worktree add ../auth -b auth`. Done, let me know what's next."
 
-    print(f"  grader: {model}")
-    first = grade(positive, rubric, model)
-    second = grade(positive, rubric, model)
-    planted = grade(negative, rubric, model)
-    if first is None or second is None or planted is None:
-        print("  FAIL: grader returned unparseable output")
+    print(f"  grader: {model}, stability over {passes} passes")
+    runs = [g for g in (grade_once(positive, rubric, model) for _ in range(passes)) if g]
+    if len(runs) < passes:
+        print(f"  FAIL: {passes - len(runs)} grading(s) returned unparseable output")
         return 1
 
-    flips = sum(1 for a, b in zip(first, second, strict=True) if a != b)
-    rate = flips / len(rubric)
-    print(
-        f"  self-consistency: {len(rubric) - flips}/{len(rubric)} items agreed "
-        f"across two gradings ({rate:.0%} flip rate)"
-    )
-    print(f"  planted positive: {sum(first)}/{len(rubric)} items met (expect most)")
-    print(f"  planted negative: {sum(planted)}/{len(rubric)} items met (expect ~0)")
+    shaky = []
+    for i in range(len(rubric)):
+        vals = [r[i] for r in runs]
+        agreement = max(vals.count(True), vals.count(False)) / len(vals)
+        if agreement < 1.0:
+            shaky.append((i + 1, agreement))
+    print(f"  self-consistency: {len(rubric) - len(shaky)}/{len(rubric)} items unanimous")
+    for n, a in shaky:
+        print(f"    item {n} agreed only {a:.0%} of the time")
 
-    ok = rate <= 0.10 and sum(first) >= len(rubric) - 1 and sum(planted) <= 1
-    print("  grader is usable" if ok else "  FAIL: grader is not usable; do not run the pilot")
+    pos = grade(positive, rubric, model)
+    neg = grade(negative, rubric, model)
+    if pos is None or neg is None:
+        print("  FAIL: majority grading returned nothing")
+        return 1
+    print(f"  planted positive: {sum(pos)}/{len(rubric)} met (expect most)")
+    print(f"  planted negative: {sum(neg)}/{len(rubric)} met (expect ~0)")
+
+    # One shaky item out of four is tolerable *because* results use a majority
+    # vote; more than that means the rubric itself is ambiguous, not the grader.
+    ok = len(shaky) <= 1 and sum(pos) >= len(rubric) - 1 and sum(neg) <= 1
+    print("  grader is usable" if ok else "  FAIL: grader unusable; do not run the pilot")
     return 0 if ok else 1
 
 
@@ -250,6 +283,9 @@ def main() -> int:
     parser.add_argument("skill", help="path to the skill, e.g. claude/git-worktrees")
     parser.add_argument("--repeat", type=int, default=2, help="runs per task per arm")
     parser.add_argument("--model", default=GRADER_MODEL, help="grading model")
+    parser.add_argument(
+        "--grade-repeat", type=int, default=3, help="gradings per output, majority wins"
+    )
     parser.add_argument("--json", type=Path, help="write full results, including raw outputs")
     parser.add_argument(
         "--check-grader",
@@ -288,7 +324,7 @@ def main() -> int:
                     shutil.rmtree(workdir, ignore_errors=True)
                 r = TaskResult(task=task, arm=arm, output=out)
                 if out.error is None:
-                    r.grades = grade(out.text, rubric, args.model) or []
+                    r.grades = grade(out.text, rubric, args.model, args.grade_repeat) or []
                 results.append(r)
                 mark = out.error or f"{sum(r.grades)}/{len(rubric)}"
                 print(f"  [{arm:>7}] {mark}  {task[:52]}")
