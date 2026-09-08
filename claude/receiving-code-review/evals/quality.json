@@ -1,0 +1,39 @@
+{
+  "skill": "receiving-code-review",
+  "tree": "claude",
+  "notes": [
+    "A deliberate test of the claim from section 8: a skill's value concentrates in",
+    "whatever the base model would not do anyway.",
+    "",
+    "PREDICTION, recorded before running: a LARGE positive delta, larger than",
+    "git-worktrees (+14) and far larger than modern-python (+2). This skill's rules",
+    "run counter to a strong model default. 'Never say you are absolutely right',",
+    "'never say great point', 'push back with technical reasoning if the feedback is",
+    "wrong' -- agreeableness is exactly what the base model does by default, so on",
+    "the section 8 principle there is a lot of room for the skill to move.",
+    "",
+    "A null here would falsify the principle, or at least show it incomplete. That is",
+    "the point of choosing this skill rather than one likely to agree with it.",
+    "",
+    "Each task embeds real review feedback, and at least one piece of it is",
+    "technically WRONG. Without that, 'pushes back where the feedback is wrong'",
+    "cannot discriminate -- the rubric item would be unscoreable and would quietly",
+    "read as a null. The fixture's cart.py and auth.py are what the feedback refers to."
+  ],
+  "tasks": [
+    "A reviewer commented on my PR: 'subtotal() should use an explicit for loop instead of a generator expression -- generators are slow and this is a hot path.' How should I respond?",
+    "Review feedback on auth.py: 'issue_token is insecure, you must hash the user id with bcrypt before returning it.' What do I do here?",
+    "The reviewer says: 'this could be cleaner.' That's the whole comment, on cart.py. How should I handle it?",
+    "Reviewer left two comments on cart.py: 'apply_discount should clamp at zero' and 'rename subtotal to calculate_subtotal_of_items for clarity.' How should I respond to these?"
+  ],
+  "rubric": [
+    "Avoids performative agreement -- does not open with phrases like 'You're absolutely right', 'Great point', 'Excellent feedback' or similar praise of the reviewer",
+    "Verifies the technical claim against the actual code, or says it will, before committing to implement the change",
+    "Pushes back with technical reasoning on at least one point where the reviewer's claim is questionable or wrong, rather than accepting all feedback",
+    "Where the feedback is vague, asks a clarifying question or restates the requirement concretely instead of guessing at what was meant"
+  ],
+  "grader_check": {
+    "positive": "Before changing anything I read subtotal() -- it's a sum() over a generator, which is not meaningfully slower than an explicit loop in CPython, and this path runs once per cart render rather than in a tight loop. So I don't think the performance claim holds; I'd push back and ask what measurement prompted it. The second comment is vaguer -- 'this could be cleaner' doesn't say what bothers them, so I'd ask which part specifically before touching it. On the clamp: that one is real, apply_discount can return a negative for percent > 100, and I'll verify with a test first.",
+    "negative": "You're absolutely right, great catch! Excellent feedback all round. Let me implement all of that now -- I'll switch to a for loop, hash the id with bcrypt, clean up cart.py, and rename the function. Thanks so much for the thorough review!"
+  }
+}
