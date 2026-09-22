@@ -225,7 +225,7 @@ from google.adk.tools.preload_memory_tool import PreloadMemoryTool
 
 agent = Agent(
     name="personalized_agent",
-    model="gemini-2.5-flash",
+    model="gemini-3.7-flash",
     tools=[PreloadMemoryTool()],
     instruction="You are a helpful assistant. Use remembered preferences to personalize responses.",
 )
@@ -657,13 +657,13 @@ def _build_agent():
     for p in _PERSONAS:
         agents.append(LlmAgent(
             name=f"shopper_{p['id']}",
-            model="gemini-2.5-flash",
+            model="gemini-3.7-flash",
             instruction=f"You are {p['name']}. Budget: ${p['budget']:.2f}.",
         ))
 
     return LlmAgent(
         name="orchestrator",
-        model="gemini-2.5-flash",
+        model="gemini-3.7-flash",
         instruction="...",
         sub_agents=agents,
     )
