@@ -185,7 +185,7 @@ search_tool = DiscoveryEngineSearchTool(
 # Sub-agent with function tools
 analytics_agent = LlmAgent(
     name="analytics_agent",
-    model="gemini-2.5-flash",
+    model="gemini-3.7-flash",
     instruction="Answer data questions using the query tool.",
     description="Answers analytics questions by querying BigQuery.",
     tools=[query_tool],
@@ -194,7 +194,7 @@ analytics_agent = LlmAgent(
 # Root agent: search tool coexists with sub-agent transfer tools
 root_agent = LlmAgent(
     name="assistant",
-    model="gemini-2.5-flash",
+    model="gemini-3.7-flash",
     instruction="Search SOPs and brand guidelines. Delegate analytics.",
     tools=[search_tool],
     sub_agents=[analytics_agent],

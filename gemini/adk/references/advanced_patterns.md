@@ -105,7 +105,7 @@ agent = Agent(
 ```python
 agent = Agent(
     name="advanced_agent",
-    model="gemini-2.5-flash",
+    model="gemini-3.7-flash",
 
     # Instructions (supports dynamic state injection)
     instruction="You are an agent for {user_name}",  # {var} replaced from state
@@ -795,7 +795,7 @@ weather_agent = Agent(
 agent = Agent(model="gemini-flash-latest", ...)
 
 # Vertex AI model
-agent = Agent(model="gemini-2.5-flash", ...)
+agent = Agent(model="gemini-3.7-flash", ...)
 
 # Third-party model (ADK is not Gemini-only)
 agent = Agent(model="openai/gpt-5.6", ...)
@@ -972,7 +972,7 @@ agent = Agent(
 # agent_config.yaml
 agent_class: LlmAgent
 name: assistant_agent
-model: gemini-2.5-flash
+model: gemini-3.7-flash
 description: A helpful assistant that can search and code
 
 instruction: |
@@ -2092,7 +2092,7 @@ search_tool = DiscoveryEngineSearchTool(
 
 root_agent = Agent(
     name="assistant",
-    model="gemini-2.5-flash",
+    model="gemini-3.7-flash",
     tools=[search_tool],           # Works alongside transfer tools
     sub_agents=[analytics_agent],  # Sub-agents inject transfer_to_agent
 )
@@ -2125,7 +2125,7 @@ def _load_config():
         config.setdefault("models", {})["adk"] = os.environ["ADK_MODEL"]
 
     config.setdefault("models", {})
-    config["models"].setdefault("adk", "gemini-2.5-flash")
+    config["models"].setdefault("adk", "gemini-3.7-flash")
     return config
 ```
 
@@ -2162,7 +2162,7 @@ from google.adk.tools.preload_memory_tool import PreloadMemoryTool
 
 root_agent = Agent(
     name="assistant",
-    model="gemini-2.5-flash",
+    model="gemini-3.7-flash",
     tools=[search_tool, PreloadMemoryTool()],
     sub_agents=[analytics_agent],
 )

@@ -43,7 +43,16 @@ description: Trigger conditions and when to use this skill
 ---
 ```
 
-The `description` field controls when the skill is auto-triggered. Write it as trigger conditions, not a summary.
+The `description` field is what the agent reads when deciding whether to load a skill. Write it as
+trigger conditions rather than a summary.
+
+> **This is convention, not a measured effect.** A 2×2 experiment varied one skill's description
+> across shape (precondition vs naming-the-failure) and length (~90 vs ~300 characters), 96 sessions,
+> and every cell came back identical — see [`docs/notes/skill-evals.md`](docs/notes/skill-evals.md)
+> §5. Eleven of the 28 `claude/` descriptions lead with a summary today, and that does not predict
+> whether they fire: `modern-python` leads with one and fires 7/8, `ralph-wiggum` leads with one and
+> fires 0/8. Follow the convention for consistency and readability; do not expect rewording to change
+> triggering, and do not spend effort retrofitting it.
 
 ### Skill Categories
 

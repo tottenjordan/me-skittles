@@ -261,7 +261,7 @@ manager_agent = Agent(
 adk run my_agent
 
 # With specific model
-adk run my_agent --model gemini-2.5-flash
+adk run my_agent --model gemini-3.7-flash
 ```
 
 ### Web Interface
@@ -405,7 +405,7 @@ For evaluation methodology, metrics, evalset schema, and running `adk eval`, see
 | Tool not called                       | Check docstring has Args section with descriptions            |
 | Import error                          | Ensure `google-adk` is installed                              |
 | API key error                         | Set `GOOGLE_API_KEY` in `.env`                                |
-| Model not found                       | Use valid model name like `gemini-2.5-flash`                  |
+| Model not found                       | Use valid model name like `gemini-3.7-flash`                  |
 | State not persisting                  | Use `tool_context.state` not local variables                  |
 | Token overflow (>1M)                  | Check data store count on engine; remove workspace connectors |
 | Image tool causes overflow            | Upload to GCS, return URI instead of base64                   |

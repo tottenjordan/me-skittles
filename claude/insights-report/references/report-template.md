@@ -1,11 +1,11 @@
 # Insights Report Template
 
-Full section structure for NovaStorm GEPA pipeline insights reports. Based on 6 prior reports (including tuned 28-epoch cold start).
+Full section structure for GEPA pipeline insights reports. Based on 6 prior reports (including tuned 28-epoch cold start).
 
 ## Header Block
 
 ```markdown
-# NovaStorm GEPA: {N}-Epoch {Variant} Report
+# GEPA: {N}-Epoch {Variant} Report
 
 **Pipeline:** `{pipeline_display_name}`
 **Experiment:** `{experiment_name}`

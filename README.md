@@ -61,13 +61,17 @@ description: Use when receiving code review feedback, before implementing sugges
 The agent reads every skill's `description` and loads the body only when one matches the task at
 hand. Two consequences drive everything in this repo:
 
-1. **`description` is the trigger.** It must read as *when to use this*, not as a summary of what
-   the skill does. A description written as a title never fires.
+1. **`description` is what the agent matches on.** Write it as *when to use this* rather than a
+   summary of what the skill does. This is convention: a 2×2 experiment crossing description shape
+   against length found **no effect on triggering** in any of four cells, and eleven of the 28
+   `claude/` descriptions lead with a summary today without that predicting whether they fire. Follow
+   it for consistency and readability, not because rewording will make a skill load.
 2. **`SKILL.md` is loaded in full.** Detail that belongs in `references/` costs context on every
    single use, which is why the body is capped at 500 lines and deeper material lives in sibling
    files the agent loads on demand.
 
-Both rules are enforced by the validator, not left to reviewer discipline.
+The validator enforces that a description **exists** and stays under 500 characters, and that the
+body stays under 500 lines. It does not, and cannot, judge whether a description reads as a trigger.
 
 ### Not every skill auto-triggers, and that is measured
 
@@ -277,7 +281,7 @@ by group:
 | `workflow` | 9 skills · ~470 tokens | 9 skills · ~510 tokens |
 | `testing` | 6 skills · ~190 tokens | 6 skills · ~190 tokens |
 | `diagrams` | 2 skills · ~240 tokens | 2 skills · ~240 tokens |
-| `tools` | 5 skills · ~430 tokens | 3 skills · ~310 tokens |
+| `tools` | 5 skills · ~420 tokens | 3 skills · ~310 tokens |
 | `meta` | 2 skills · ~110 tokens | 6 skills · ~290 tokens |
 | `data` | — | 1 skill · ~140 tokens |
 | `gcp` | — | 26 skills · ~3,180 tokens |

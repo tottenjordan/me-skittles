@@ -9,7 +9,7 @@ Debug and analyze Vertex AI Pipeline jobs using the SDK, Cloud Logging, and GCS 
 
 ## Required Inputs from User
 
-- **Pipeline display name or run ID** (e.g., `novastorm-run-20260319-150709`)
+- **Pipeline display name or run ID** (e.g., `my-pipeline-run-20260319-150709`)
 - **GCP project ID** (e.g., `hybrid-vertex`)
 - **Region** (e.g., `us-central1`)
 - **GCS bucket** for pipeline artifacts (if checking evidence reports, logs, progress)
@@ -100,7 +100,7 @@ for t in r.task_details:
 
 **Common gotcha:** `PipelineJob` objects lack `start_time` and `end_time` attributes. Use `create_time` and check Cloud Logging for actual start/end timestamps.
 
-**Display name vs resource name:** The `display_name` and `resource_name` often differ slightly (e.g., `novastorm-pipeline-20260319-150709` vs `novastorm-run-20260319-150709`). Always search with a substring.
+**Display name vs resource name:** The `display_name` and `resource_name` often differ slightly (e.g., `my-pipeline-20260319-150709` vs `my-pipeline-run-20260319-150709`). Always search with a substring.
 
 ## Step 2: Query Worker Logs (Cloud Logging)
 

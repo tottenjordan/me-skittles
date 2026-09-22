@@ -1,9 +1,9 @@
 ---
 name: insights-report
-description: Use when building a NovaStorm GEPA pipeline insights report for a completed or in-progress pipeline run, when asked to document pipeline results, or when comparing pipeline run metrics across experiments.
+description: Use when building a GEPA pipeline insights report for a completed or in-progress pipeline run, when asked to document pipeline results, or when comparing pipeline run metrics across experiments.
 ---
 
-# NovaStorm Insights Report
+# GEPA Pipeline Insights Report
 
 Build publication-quality insights reports for GEPA pipeline runs with data-driven diagrams and cross-run comparison tables.
 
@@ -30,7 +30,7 @@ Key variables used throughout this workflow:
 | Variable | Used For | Example |
 |----------|----------|---------|
 | `GOOGLE_CLOUD_PROJECT` | GCS client, Pipeline SDK | `hybrid-vertex` |
-| `BUCKET_NAME` | GCS log/artifact bucket | `novastorm-hybrid-vertex-v6` |
+| `BUCKET_NAME` | GCS log/artifact bucket | `my-pipeline-artifacts` |
 | `EXPERIMENT_NAME` | GCS path prefix | `sup-chain-test-v1` |
 | `AGENT_ENGINE_ID` | Memory Bank namespace | `5646775610664550400` |
 | `GOOGLE_CLOUD_LOCATION` | Pipeline SDK region | `us-central1` |
@@ -54,7 +54,7 @@ Key variables used throughout this workflow:
 
 Use the `inspect-vai-pipes` skill with the run name:
 ```
-/inspect-vai-pipes novastorm-run-YYYYMMDD-HHMMSS
+/inspect-vai-pipes my-pipeline-run-YYYYMMDD-HHMMSS
 ```
 
 This gives: state, parameters (epochs, concurrency, fitness_scaling_factor, novelty_weight, worker_timeout, explore_rate, topic), task details, and timing.
@@ -63,7 +63,7 @@ This gives: state, parameters (epochs, concurrency, fitness_scaling_factor, nove
 
 Pipeline run names map to GCS paths by reformatting the timestamp:
 ```
-novastorm-run-20260328-175751
+my-pipeline-run-20260328-175751
                 ↓
 run-2026_03_28_17_57_51
 ```
@@ -82,7 +82,7 @@ from google.cloud import storage
 import json
 
 client = storage.Client(project='hybrid-vertex')
-bucket = client.bucket('novastorm-hybrid-vertex-v6')
+bucket = client.bucket('my-pipeline-artifacts')
 prefix = '{experiment}/run-{timestamp}/pipeline_root/evidence_reports/'
 
 # Discover tables
@@ -148,10 +148,10 @@ Extract comparison metrics from these reports (read the Executive Summary tables
 
 ## Step 5: Generate Architecture Diagram
 
-Use the `gcp-diagram` skill. Write a text description to `/tmp/novastorm_report/diagram_architecture.txt`, then invoke:
+Use the `gcp-diagram` skill. Write a text description to `/tmp/pipeline_report/diagram_architecture.txt`, then invoke:
 
 ```
-/gcp-diagram /tmp/novastorm_report/diagram_architecture.txt "NovaStorm GEPA {N}-Epoch Pipeline Architecture"
+/gcp-diagram /tmp/pipeline_report/diagram_architecture.txt "GEPA {N}-Epoch Pipeline Architecture"
 ```
 
 The description should cover the 5-tier GEPA flow: Discovery → Synthesis → Execution → Evaluation → Persistence. Annotate any new features being tested in this run.
