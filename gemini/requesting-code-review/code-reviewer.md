@@ -44,6 +44,12 @@ git diff {BASE_SHA}..{HEAD_SHA}
 
 **Testing:**
 - Tests actually test logic (not mocks)?
+- Do the tests invoke the code **the way production invokes it**, or do they rebuild the
+  call? A harness that reconstructs an invocation cannot see a bug *in* that invocation —
+  this is how embedded shell/heredoc/subprocess code ships broken with a green suite.
+- If the change adds a flag, env var or config option: is the **unset/default** path
+  tested, not just the configured one? That is the path almost every run takes.
+- Would mutating the **wiring** (not the payload) turn the suite red?
 - Edge cases covered?
 - Integration tests where needed?
 - All tests passing?
