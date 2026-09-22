@@ -340,6 +340,9 @@ Before marking work complete:
 - [ ] Output pristine (no errors, warnings)
 - [ ] Tests use real code (mocks only if unavoidable)
 - [ ] Edge cases and errors covered
+- [ ] Test invokes the code the way PRODUCTION invokes it (not a rebuilt copy of the call)
+- [ ] Default/unset path tested, not just the configured one
+- [ ] Mutated the WIRING, not just the payload, and watched the suite go red
 
 Can't check all boxes? You skipped TDD. Start over.
 
@@ -364,6 +367,10 @@ When adding mocks or test utilities, read @testing-anti-patterns.md to avoid com
 - Testing mock behavior instead of real behavior
 - Adding test-only methods to production classes
 - Mocking without understanding dependencies
+- **Reconstructing the invocation** instead of executing the real one — a harness that
+  rebuilds the call cannot see a bug *in* the call
+- **Testing only the configured path** — the unset/default path is the one almost every
+  run takes, and the easiest to never execute
 
 ## Final Rule
 
