@@ -108,6 +108,33 @@ see [references/cli.md](references/cli.md).
    `continue_diagram(run_id=..., feedback=..., image_model="gemini-3.1-flash-image", vlm_model="gemini-3.7-flash")`;
    it reuses retrieval and planning.
 
+## Refinement limits — geometry does not refine
+
+Observed 2026-09-10 on a GCP reference architecture. A `forecast → resolve → evolve` chain had an
+outbound arrow the prompt attached to `resolve`; the model drew it leaving `evolve`. **Four**
+`continue_diagram` calls failed to move it — one returned `strict_success: true` having changed
+nothing, another "fixed" it by breaking two things that were already correct.
+
+The cause is mechanical rather than a bad prompt: an outbound arrow attaches to whichever box is
+**spatially last** in the chain, and `continue_*` re-renders from the image rather than editing it.
+
+- **Spend at most one `continue_*` on geometry** — origin, endpoint, routing. Label text, colours
+  and added boxes refine fine; geometry does not.
+- **Fix it in the layout and regenerate instead.** Reordering to `evolve → forecast → resolve` made
+  the arrow correct on the first try, and read better besides.
+- **Keep every iteration.** `continue_*` overwrites `final_output.png`, so the good image may be
+  `diagram_iter_1.png`. Check `diagram_iter_*.png` before accepting a regression.
+
+### Bands are respected; columns within a band are not
+
+Same session: a separate group sitting beside an `A → B → C` chain got wired to the nearest node in
+that chain — twice, ignoring an explicit "nothing else leaves this box". Moving it to its own titled
+horizontal band fixed it in one call.
+
+Stack independent subsystems as titled bands one above another and state "there are NO arrows
+between bands". A long edge that must cross the whole figure is a layout smell: restructure so it
+becomes a *return* arrow beneath a chain, which renders reliably.
+
 ## Evaluation
 
 `evaluate_diagram` / `evaluate_plot` score a generated figure against a human reference on four
@@ -135,7 +162,8 @@ Caveats that still apply:
 |---|---|
 | Passing `image_model`/`vlm_model` to `generate_diagram`/`generate_plot` | Unsupported — they read the server env; omit. |
 | Letting `batch_*` / `orchestrate_*` pick default models | Always pass `image_model="gemini-3.1-flash-image"`, `vlm_model="gemini-3.7-flash"`. |
-| Regenerating just to tweak a figure | Use `continue_*` with the `run_id`. |
+| Regenerating just to tweak a figure | Use `continue_*` with the `run_id` — except for arrow geometry, which does not refine; fix the layout and regenerate (see Refinement limits). |
+| Burning `continue_*` calls on an arrow that will not move | Geometry re-renders rather than edits. One attempt, then change the layout. |
 | Assuming PaperBanana eats the Vertex 2 RPM cap | It bills the separate Gemini Developer API pool. |
 | Using a `*-preview` image model ID | Both were shut down 2026-06-25 — use the stable IDs in Models above. |
 | Trademarked GCP logos render wrong | Expected — generative models approximate icons. Keep every text label spelling-accurate (table in gcp-brand.md). |
